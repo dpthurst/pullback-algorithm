@@ -1,0 +1,32 @@
+{
+  "source": "Harmonic Examples.lhs 'Double theta to theta'; [PChar] Fig. 3",
+  "map": "(1+z^2)/(1-z^2)",
+  "graph": "apqr bRQP",
+  "cover": "q01",
+  "phi": "p0P p1r r0Q r1q",
+  "punctures": [
+    {
+      "face": "qP",
+      "name": "-1"
+    },
+    {
+      "face": "rQ",
+      "name": "1"
+    },
+    {
+      "face": "Rp",
+      "name": "inf (exterior)"
+    }
+  ],
+  "elastics": [
+    4,
+    1,
+    4
+  ],
+  "lengths": [
+    2,
+    1,
+    3
+  ],
+  "name": "theta"
+}

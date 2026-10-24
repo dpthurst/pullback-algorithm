@@ -1,0 +1,9 @@
+{
+  "source": "Harmonic Examples.lhs 'Barycentric subdivision'; [ConfDim] 5.2",
+  "map": "4/27 (z^2-z+1)^3/(z(z-1))^2",
+  "graph": "0pqr 1RQP",
+  "cover": "rabc|def qad|bf|ce",
+  "phi": "qaq qfQ qbr qeR qcp qdP",
+  "expected_from_confdim": "E^2_2[phi^2] = 10/13",
+  "name": "barycentric"
+}

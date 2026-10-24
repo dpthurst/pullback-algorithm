@@ -1,0 +1,16 @@
+{
+  "source": "Harmonic Examples.lhs 'Quadratic Sierpinski Carpet'; [PChar] 1.2 census #3.2",
+  "graph": "atpq bTrs cuQP dUSR",
+  "cover": "r01",
+  "phi": "s0p p0q q0trU q1R p1S s1S r0t r1U",
+  "elastics_tuned": [
+    189.0,
+    211.0,
+    68.8,
+    170.0,
+    1.0,
+    1.0
+  ],
+  "note": "ASF about 0.94; n=1 insufficient for a certificate (plan 190 caveat)",
+  "name": "census-3.2"
+}

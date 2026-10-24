@@ -1,0 +1,13 @@
+{
+  "source": "Harmonic Examples.lhs 'Census #53'",
+  "graph": "xRrg yGBb",
+  "cover": "b012 r12",
+  "phi": "g2r g0G r0b",
+  "elastics": [
+    "24",
+    "3+sqrt(105)",
+    "18+2*sqrt(105)"
+  ],
+  "elastics_order": "b g r",
+  "name": "census-53"
+}

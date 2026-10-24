@@ -1,0 +1,335 @@
+{
+  "theta": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 1,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "bouquet": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 1,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "barbell": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 1,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "slit-lattes": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
+    "portrait_nonface_projections": []
+  },
+  "census-3.2": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "rabbit": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "twisted-rabbit": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "grigorchuk": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 5,
+      "collapsed": 3,
+      "ok": false
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "tetrahedral": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 4,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "barycentric": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 5,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3
+    ],
+    "portrait_nonface_projections": []
+  },
+  "blown-up-lattes": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
+    "portrait_nonface_projections": []
+  },
+  "census-53": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 3,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
+    "portrait_nonface_projections": []
+  },
+  "julia-4442": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 0,
+      "collapsed": 6,
+      "ok": false
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
+  "julia-4422": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": false,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  }
+}

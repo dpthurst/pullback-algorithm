@@ -1,0 +1,8 @@
+{
+  "source": "Harmonic Examples.lhs 'Hamal birthday conference' (Dehn twist of rabbit)",
+  "graph": "xaAbBcC",
+  "cover": "a01",
+  "phi": "b0Bab c0BAbab b1c",
+  "note": "not every cycle in P is critical; no exponential decay expected. CAUTION: the third token 'b1c' has the same defect as the untwisted map's 'b0c' \u2014 there is no b1 token in the corrected rabbit.  If the twist conjugates only the b0, c0 images by ab (as the source comment says), the twisted tokens should be 'b0Bab c0BAbab' followed by the twist-images of the corrected a-tokens \u2014 pending the author's word; the string is left as found until then.",
+  "name": "twisted-rabbit"
+}

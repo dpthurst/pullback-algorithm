@@ -1,0 +1,16 @@
+{
+  "source": "Harmonic Julia.lhs 'Example 1: Quadratic, (4,4,4,2) orbifold'",
+  "map": "(2z^2-4)/z^2",
+  "graph": "apqrs bSRQP",
+  "cover": "q01",
+  "phi": "r0P s0Q p0Q p1q s1r r1s",
+  "elastics": [
+    2,
+    1,
+    2,
+    1
+  ],
+  "elastics_order": "p q r s",
+  "note": "Julia set is the whole sphere (post-critically finite with no critical periodic cycles); hyperbolic orbifold (4,4,4,2).  The MAIN THEOREM OF [PChar] does not apply to this example.  THE AUTHOR HAS NOT CHECKED THIS EXAMPLE CAREFULLY \u2014 treat the data as unverified until the engine's checks pass.  Old-code targets (M3): EL_v/EL_h converges toward 1.637 = (1.279)^2 from the Schwarz-Christoffel rectangle on S^2-{inf,-2,1,2}; old starting weights (2,1,2,1) on p,q,r,s, ratio table in Julia.lhs.",
+  "name": "julia-4442"
+}

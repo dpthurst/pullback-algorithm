@@ -1,0 +1,17 @@
+{
+  "source": "Harmonic Julia.lhs 'Example 2: Quadratic, (4,4,2,2) orbifold'",
+  "map": "(1 + z^2/(1-i))/(1-z^2)",
+  "graph": "apqr bPtsQ cRST",
+  "cover": "q01 s01",
+  "phi": "q0p s0q s1Q q1R r1S p1T",
+  "elastics": [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "elastics_order": "p q r s t",
+  "note": "Flowers corrected per the author (2026-10-24): the b and c flowers were transcribed clockwise; 'apqr bPtsQ cRST' is the unique planar embedding (a flower fixed) whose cover is a sphere with 6 faces and portrait degrees {1,1,1,1,2,2}, matching |f^-1(P)| = 6 and chi(Sigma_1) = 2 chi(Sigma_0).  Its global mirror 'aprq bPQst cRTS' is the complex-conjugate map and equally correct (global orientation reversal = complex conjugation; a common user-input slip, immaterial here).  Julia set is the whole sphere; hyperbolic orbifold (4,4,2,2); unique quadratic rational map with it up to conjugation.  The MAIN THEOREM OF [PChar] does not apply.  THE AUTHOR HAS NOT CHECKED THIS EXAMPLE CAREFULLY \u2014 treat the data as unverified until the engine's checks pass.  Old-code targets (M3): triangle shapes toward (1, 1.19586, 1.25727) (square roots of EL ratios from Schwarz-Christoffel integrals on S^2-{0,1,2i,inf}); table in Julia.lhs.",
+  "name": "julia-4422"
+}

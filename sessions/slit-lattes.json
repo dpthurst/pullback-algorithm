@@ -1,0 +1,8 @@
+{
+  "source": "Harmonic Examples.lhs 'Slit Lattes' (Kevin Pilgrim); output.tex",
+  "map": "z^2(z-1)/(z-1/3)^3",
+  "graph": "apqr bRQP",
+  "cover": "r012 q01",
+  "phi": "q1P p1Q p2q q2r",
+  "name": "slit-lattes"
+}

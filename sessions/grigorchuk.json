@@ -1,0 +1,8 @@
+{
+  "source": "Harmonic Examples.lhs 'The Grigorchuk group'",
+  "graph": "apPqQrRsS",
+  "cover": "p01",
+  "phi": "q1r r1s s1q q0p r0p",
+  "note": "graph endomorphism not from a rational map; ASF = 1",
+  "name": "grigorchuk"
+}
