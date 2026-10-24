@@ -3,6 +3,6 @@
   "graph": "xaAbBcC",
   "cover": "a01",
   "phi": "b0Bab c0BAbab b1c",
-  "note": "not every cycle in P is critical; no exponential decay expected. CAUTION: the third token 'b1c' has the same defect as the untwisted map's 'b0c' \u2014 there is no b1 token in the corrected rabbit.  If the twist conjugates only the b0, c0 images by ab (as the source comment says), the twisted tokens should be 'b0Bab c0BAbab' followed by the twist-images of the corrected a-tokens \u2014 pending the author's word; the string is left as found until then.",
+  "note": "TWISTED rabbit as a topological map hR (h fixing P): its dynamics ON P is that of the rabbit, so every cycle of P should contain a branch point.  The type classifier on this string finds an UNBRANCHED cycle \u2014 further evidence that the description is wrong (the third token 'b1c' is suspect; there is no b1 token in the corrected rabbit).  The author may supply the correct string; longer term the app will derive twists itself from a curve (deferred front end, plan).",
   "name": "twisted-rabbit"
 }

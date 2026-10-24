@@ -156,6 +156,28 @@ for Thurston's algorithm (150, 230).
      label in R₁, the element of π₁(R₀) represented by φ(e)). The normalised
      form is decided by the choice of T₀ up to conjugacy; the app can show the
      effect of a different T₀ as a consistency check.
+     *Correction (measured 2026-10-24; the sentence above was too strong).* Not
+     every spanning tree can be used: the collapse π⁻¹(T₀) ↦ pt inside Γ₁ is
+     compatible with φ only if φ sends each lift of a tree edge to a **point** of
+     R₀ — this is the condition the paper states for its own example ("the two
+     c edges of Γ₁ map with a constant map to the two vertices of Γ₀", c being
+     the tree). Call such a tree *admissible*. Theta has three spanning trees
+     and exactly one admissible one, {q}, which is the paper's tree c (paper
+     a=p, b=r, c=q); it reproduces Fig. 3d and has level orders
+     2, 2², 2³, 2⁵, 2⁸, 2¹⁴, 2²⁵. On the inadmissible tree {p} the section
+     closure does not terminate (5105 distinct level-5 actions by depth 40) and
+     the two natural readings of the section — φ of the whole lifted loop
+     τgτ⁻¹, or φ of the generator's lift alone — disagree (level-7 orders 2²⁶ vs
+     2⁴, against 2²⁵); neither is the map's. Over the 58 spanning trees of the
+     14 library sessions, admissibility holds for 14, and exactly on those do
+     the two readings give identical data; on the sessions with two admissible
+     trees (barycentric, tetrahedral) the automata agree up to relabelling, so
+     the consistency check of this item is a check over admissible trees.
+     Implemented as `normalform.is_admissible_tree` / `admissible_trees`, with
+     the default tree chosen admissible; an inadmissible tree is refused unless
+     asked for explicitly (`require_admissible=False`). Two library sessions
+     have **no** admissible tree — `blown-up-lattes` and `census-53` — so their
+     rose automaton is not justified by their data as it stands; open.
 - **140.** The **biset** B: sheets X = {1..d} with the free right G-action of the
      cover monodromy and the left G-action by the sections of 130; the wreath
      recursion g = σ_g · (g|_x)_{x∈X} is the same data in Nekrashevych's form.
@@ -339,7 +361,10 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      library of 90 with expected outputs recorded as fixtures (350).
 - **310.** **M2 — algebra.** 130–150: the normal form, the biset, the group
      machinery, level-n Schreier graphs; the Fig. 3d relations as a test.
-- **320.** **M3 — energies.** 160–210; the longest and riskiest milestone: [Elast,
+- **320.** **M3 — energies.** (The type classification of §1 — hyperbolic
+  type / cycle without branch point / non-compact, [PChar] §1.2 — belongs here
+  with the main theorem's hypothesis; it is not a data-validity check: author,
+  2026-10-24.) 160–210; the longest and riskiest milestone: [Elast,
      §3, §5, §6] need a careful read before coding, and the convergence
      caveats of 170 are real. Deliverable: a number for Emb[φ], with its
      certified bracket, and the iterate plot with certificates.
@@ -347,6 +372,31 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      examples and the polynomial family first, with the Thurston pullback of
      230 (decided 2026-10-23) as the engine and Bartholdi's IMG as the
      cross-check.
+Deferred beyond the milestones (end-user **input front ends**, not engine work —
+they emit sessions and never modify the engine; deliberately postponed until a
+first implementation exists):
+
+* **Schwarz–Christoffel importer.** Input $(f, P, \text{spine coordinates})$;
+  output a session. Pieces: (1) analytic portraits from $f$'s coefficients —
+  **done** (`rational.py`, cross-checked against four sessions); (2) the spine
+  and an explicit retraction $\rho$ per model family (model-specific; the
+  nearest-point retraction onto a rectangle's boundary is not one — punctures
+  pinch it); (3) tracking $\Gamma_1 = f^{-1}(\Gamma_0)$ through critical values
+  and reading off $\varphi$'s words; (4) emission. Acceptance is free: the
+  ribbon boundary pattern, $\pi_1$, and the portrait oracle. First target:
+  `julia-4442` (doubled rectangle, aspect 1.279; portrait pinned at
+  {2,2,1,1,1,1}). Estimated: an afternoon for (1) [done], a focused day per
+  model family for (2), one to two days for (3).
+* **Twisting by mapping-class elements.** Input a curve in $S^2\setminus P$
+  (word in $\pi_1$ up to conjugacy) and an exponent, or a product of twists;
+  transform the VE by the automorphism the twist induces on $\pi_1$
+  (BMW / Bartholdi–Nekrashevych picture) and re-normalise. Technical issues:
+  curve specification, the automorphism's effect on the spanning-tree
+  bookkeeping. Acceptance: portrait, type and energies are **invariant** under
+  twisting — already computable, so the test exists before the feature.
+  The twisted-rabbit session's data stays as found until then (author may
+  supply the correct string; the app will eventually derive twists itself).
+
 - **340.** **M5 — packaging.** 260, 280; a page on the same site only when you say
      it is finished (nothing web-visible is pushed without asking).
 

@@ -82,10 +82,10 @@ def _tree_path(graph, tree, u, v):
     path = []
     x = v
     while prev[x] is not None:
-        px, d = prev[x]
-        path.append(rev(d))
+        px, d = prev[x]   # d: px -> x, so the u->v path ends with d
+        path.append(d)
         x = px
-    return tuple(path)
+    return tuple(reversed(path))  # order u -> v
 
 
 def rose_words(phi, tree0, tree1, gens1):

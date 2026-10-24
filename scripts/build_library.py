@@ -69,18 +69,22 @@ EXAMPLES = {
     "twisted-rabbit": {
         "source": "Harmonic Examples.lhs 'Hamal birthday conference' (Dehn twist of rabbit)",
         "graph": "xaAbBcC", "cover": "a01", "phi": "b0Bab c0BAbab b1c",
-        "note": ("not every cycle in P is critical; no exponential decay expected. "
-                 "CAUTION: the third token 'b1c' has the same defect as the untwisted "
-                 "map's 'b0c' — there is no b1 token in the corrected rabbit.  If the "
-                 "twist conjugates only the b0, c0 images by ab (as the source comment "
-                 "says), the twisted tokens should be 'b0Bab c0BAbab' followed by the "
-                 "twist-images of the corrected a-tokens — pending the author's word; "
-                 "the string is left as found until then."),
+        "note": ("TWISTED rabbit as a topological map hR (h fixing P): its dynamics "
+                 "ON P is that of the rabbit, so every cycle of P should contain a "
+                 "branch point.  The type classifier on this string finds an UNBRANCHED "
+                 "cycle — further evidence that the description is wrong (the third "
+                 "token 'b1c' is suspect; there is no b1 token in the corrected rabbit).  "
+                 "The author may supply the correct string; longer term the app "
+                 "will derive twists itself from a curve (deferred front end, plan)."),
     },
     "grigorchuk": {
         "source": "Harmonic Examples.lhs 'The Grigorchuk group'",
         "graph": "apPqQrRsS", "cover": "p01", "phi": "q1r r1s s1q q0p r0p",
-        "note": "graph endomorphism not from a rational map; ASF = 1",
+        "category": "group",
+        "note": ("The GRIGORCHUK group example: a group-theoretic illustration "
+                 "(amenable, intermediate growth) with NO natural ribbon structure.  "
+                 "The ribbon boundary pattern failing is expected and is not a defect; "
+                 "group-level checks only."),
     },
     "tetrahedral": {
         "source": "Harmonic Examples.lhs 'Tetrahedral subdivision' (Buff page)",
@@ -152,7 +156,7 @@ def main():
         sess = {k: v for k, v in ex.items()
                 if k in ("source", "map", "graph", "cover", "phi", "elastics",
                          "lengths", "elastics_tuned", "elastics_order", "note",
-                         "punctures",
+                         "punctures", "category",
                          "expected_from_output_tex", "expected_from_confdim")}
         sess["name"] = name
         (outdir / f"{name}.json").write_text(json.dumps(sess, indent=2) + "\n")
