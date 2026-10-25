@@ -160,12 +160,14 @@ class TestSphereView(unittest.TestCase):
 
     def test_north_is_up_and_is_the_unsettled_colour(self):
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         a = image_array(view.render_image(160, 160))
         self.assertEqual(tuple(int(v) for v in a[40, 80]), self.inside)   # v ~ +0.5
         self.assertNotEqual(tuple(int(v) for v in a[120, 80]), self.inside)
 
     def test_yaw_does_not_change_a_phi_constant_texture(self):
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         a = image_array(view.render_image(120, 120))
         view.yaw = np.pi / 3
         b = image_array(view.render_image(120, 120))
@@ -173,6 +175,7 @@ class TestSphereView(unittest.TestCase):
 
     def test_pitch_tilts_the_picture(self):
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         a = image_array(view.render_image(120, 120))
         view.pitch = np.pi / 2
         b = image_array(view.render_image(120, 120))
@@ -180,8 +183,11 @@ class TestSphereView(unittest.TestCase):
 
     def test_aspect_ratio_is_preserved(self):
         # Regression (author, 2026-10-25): normalising x and y separately
-        # stretched the sphere into an ellipse on a wide panel.
+        # stretched the sphere into an ellipse on a wide panel.  Measured on
+        # the ball, whose outline is the visible witness, and the plane is
+        # checked to fill the panel with one scale (the crop test below).
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         for w, h in ((300, 180), (180, 300), (240, 240)):
             a = image_array(view.render_image(w, h))
             mask = np.any(a != np.array([24, 24, 28], np.uint8), axis=2)
@@ -189,8 +195,16 @@ class TestSphereView(unittest.TestCase):
             self.assertEqual(int(xs.max() - xs.min()), int(ys.max() - ys.min()),
                              (w, h))
 
+    def test_the_plane_fills_the_panel(self):
+        view = SphereView(self.tex, maxiter=150)
+        self.assertEqual(view.projection, "stereographic")     # the default
+        a = image_array(view.render_image(300, 180))
+        mask = np.any(a != np.array([24, 24, 28], np.uint8), axis=2)
+        self.assertTrue(mask.all())
+
     def test_the_picture_does_not_depend_on_the_window_shape(self):
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         wide = image_array(view.render_image(300, 180))
         square = image_array(view.render_image(180, 180))
         # the 180x180 centre of the wide render is the square render
@@ -215,6 +229,7 @@ class TestSphereView(unittest.TestCase):
         # 1 by symmetry, which is why the first version of this test passed
         # vacuously).
         view = SphereView(self.tex, maxiter=150)
+        view.set_projection("orthographic")
         _inside, S = view._unit_points(401, 401)
         du, dv = self._tangents(S, 320, 150)
         self.assertGreater(abs(float(np.linalg.norm(du) / np.linalg.norm(dv)) - 1.0), 0.01)

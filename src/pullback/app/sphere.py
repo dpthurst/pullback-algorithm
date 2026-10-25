@@ -33,12 +33,12 @@ class SphereView(QWidget):
         self.yaw = 0.0
         self.pitch = 0.0
         self.zoom = 1.0
-        # "orthographic": the ball, one ray per pixel, perspective
+        # "stereographic" (the default, author 2026-10-25): the conformal
+        # plane -- screen plane -> sphere by inverse stereographic
+        # projection, circles stay circles, the sphere is drawn minus the
+        # point at the far pole.  "orthographic": the ball, perspective
         # foreshortening near the limb (circles there are ellipses).
-        # "stereographic": the conformal chart -- screen plane -> sphere by
-        # inverse stereographic projection, circles stay circles, the sphere
-        # is drawn minus the point at the far pole.
-        self.projection = "orthographic"
+        self.projection = "stereographic"
         self._last_image = None
         self._drag = None
         if counts is not None:

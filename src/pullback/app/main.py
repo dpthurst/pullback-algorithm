@@ -133,7 +133,8 @@ class MainWindow(QMainWindow):
         proj_row = QHBoxLayout()
         proj_row.addWidget(QLabel("projection"))
         self.proj_combo = QComboBox()
-        self.proj_combo.addItems(["ball (orthographic)", "conformal (stereographic)"])
+        self.proj_combo.addItems(["conformal (stereographic, plane)",
+                                  "ball (orthographic)"])
         self.proj_combo.currentIndexChanged.connect(self._on_projection)
         proj_row.addWidget(self.proj_combo)
         proj_row.addStretch(1)
@@ -225,7 +226,7 @@ class MainWindow(QMainWindow):
         self._render_map()
 
     def _on_projection(self, index):
-        self.sphere.set_projection("stereographic" if index == 1 else "orthographic")
+        self.sphere.set_projection("orthographic" if index == 1 else "stereographic")
 
     def _render_map(self):
         """The Map panel: the session's rational map, if it has a numeric one."""

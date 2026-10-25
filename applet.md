@@ -30,12 +30,12 @@ you open:
 * **Map** — the session's rational map (its `map` field, e.g.
   `(1+z^2)/(1-z^2)`), drawn on the Riemann sphere: the basin depth of its
   attracting cycles, on a sphere grid, rasterised on the CPU — drag to
-  rotate, wheel to zoom. Two projections: **ball** (orthographic — what a
-  sphere looks like; circles near the limb are ellipses, which is
-  perspective, not a defect) and **conformal** (stereographic — angle
-  preserving, so circles stay circles, and the sphere is drawn minus the
-  point at the far pole, filling the panel). The screen uses one scale for
-  both axes, so the ball is round in any window shape. Sessions whose `map`
+  rotate, wheel to zoom. Two projections: **conformal** (stereographic — the
+  default; angle preserving, so circles stay circles, drawn as the plane
+  with the sphere minus the point at the far pole filling the panel) and
+  **ball** (orthographic — what a sphere looks like; circles near the limb
+  are ellipses, which is perspective, not a defect). The screen uses one
+  scale for both axes, so the ball is round in any window shape. Sessions whose `map`
   is not a number (`Douady rabbit z^2+c`) say so, and so do sessions with no
   map.
 * **Energies** — the lifting bound of plan item 180 for a chosen $p$ and

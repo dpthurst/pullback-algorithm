@@ -126,14 +126,15 @@ class TestWindow(unittest.TestCase):
         w.close()
 
     def test_projection_toggle(self):
+        # Default is the conformal plane (author, 2026-10-25).
         w = MainWindow()
         w.open_session(THETA)
-        self.assertEqual(w.sphere.projection, "orthographic")
-        w.proj_combo.setCurrentIndex(1)
         self.assertEqual(w.sphere.projection, "stereographic")
+        w.proj_combo.setCurrentIndex(1)
+        self.assertEqual(w.sphere.projection, "orthographic")
         self.assertFalse(w.sphere.render_image(120, 120).isNull())
         w.proj_combo.setCurrentIndex(0)
-        self.assertEqual(w.sphere.projection, "orthographic")
+        self.assertEqual(w.sphere.projection, "stereographic")
 
     def test_bad_file_is_reported_not_raised(self):
         scratch = ROOT / ".scratch" / "app-test"

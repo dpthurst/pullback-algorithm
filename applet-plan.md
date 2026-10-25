@@ -599,7 +599,8 @@ for Thurston's algorithm (150, 230).
      usable OpenGL context under the offscreen platform, so a GL view could not be verified.
      Two projections, both with a single screen scale so aspect ratio is preserved:
      orthographic (the ball; perspective foreshortening near the limb, not conformal) and
-     stereographic (conformal, sphere minus the far pole, filling the panel).
+     stereographic (conformal, sphere minus the far pole, filling the panel) — stereographic is
+     the default (author, 2026-10-25).
 - **270.** **Headless checks**: node v20 is available at ~/node/bin/node (jsdom is
      not installed globally; the core-entropy project's harnesses in its `.scratch/js` show the
      pattern — install what is needed into a git-excluded folder). Plus
