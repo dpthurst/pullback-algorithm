@@ -9,10 +9,26 @@ endomorphism in normal form (plan item 130/140):
   sections[g][i] = the phi-image of the lift of g at sheet i, as a word
                    in the generators (signs = orientations)
 
+Which biset this is (plan item 140; author's decision, 2026-10-25): the
+*COLLAPSED* single-basepoint group biset -- pi_1(Gamma_0) acting on the
+sheets after 130's collapse of Gamma_1 to the rose -- and not the groupoid
+biset over the vertices of Gamma_0.  Two consequences before extending it:
+the collapse need not be effective, so there can be a nontrivial kernel
+pi_1 -> IMG (session `twisted-z2i` has an infinite one; `AGENTS.md`
+A0.1-2), and IMG's `ThurstonObstruction`/`SpiderAlgorithm` take exactly
+this collapsed form, so the rational-map cross-check is unaffected.
+
 Level-n action and the group operations (products, inverses, sections,
 nucleus, contracting test) are implemented by the wreath recursion
 g(x.w) = sigma_g(x) . (g|_x)(w), with words acting by composition
-(left factor outermost).
+(left factor outermost).  CONSEQUENCE for `sections`: a section word is
+a group element, so its FIRST entry acts LAST.  A geometric section is a
+path d_1...d_k in traversal order, whose induced action applies d_1
+first; it must therefore be stored as (d_k, ..., d_1).  `normal_form` and
+`RoseAutomaton` do that reversal.  Getting it wrong is invisible when
+every section is a single letter (or an involution at level 1) and shows
+up first at level 4 otherwise -- theta's tree {p} was 2^26 instead of
+2^25 because of it.
 """
 
 from __future__ import annotations
@@ -120,33 +136,79 @@ class Automaton:
     def element_sections(self, word):
         return [self.section(word, x) for x in range(len(self.sheets))]
 
-    def nucleus(self, cap=4096, depth=64):
-        """Closure of the generators (and inverses) under taking
-        sections; returns (elements, closed) with closed False if the
-        cap or depth was hit."""
+    def _level_signature(self, word, level):
+        """The action of `word` on every level-n word, as a hashable key.
+
+        Used to dedupe states by ELEMENT rather than by the word spelling it
+        (see `nucleus`)."""
+        d = len(self.sheets)
+        return tuple(tuple(self.apply(word, list(w)))
+                     for w in product(range(d), repeat=level))
+
+    def nucleus(self, cap=4096, depth=64, level=None):
+        """Closure of the generators (and inverses) under taking sections.
+
+        Returns (states, closed), with closed False if cap or depth was hit.
+
+        The letters are FREE generators, so a reduced word is an element of
+        pi_1 = F_g.  With level=None the dedup is therefore exact in pi_1:
+        this is the pi_1-nucleus, and it terminates iff pi_1 is contracting on
+        the tree.  That is a SEMI-decision -- halting proves contraction;
+        when the nucleus is infinite the enumeration simply runs (the
+        non-termination is not an artefact, since the dedup is exact).  It
+        says nothing about the IMG, which is a quotient: measured 2026-10-25
+        on the shipped twisted-rabbit machine, the pi_1 closure reaches 106
+        words and is still open, while the closure by the action on level 4
+        is 23 classes and stays 23 at levels 5 through 8.  So the image
+        contracts and pi_1 does not: the kernel of pi_1 -> IMG has infinitely
+        many sections.  (Author, 2026-10-25, from an informal conversation
+        with Nekrashevych: the questions differ, and when IMG contraction
+        implies contraction on pi_1^orb is not known.)
+
+        With level=n, states are deduped by their action on X^n, i.e. in the
+        image of pi_1 in Sym(X^n).  That universe is FINITE, so this closure
+        always terminates (unless cap/depth is hit); `closed` carries no
+        information there.  The informative output is the number of classes,
+        and whether it stabilises as n grows -- which is the IMG question, up
+        to the level-n kernel.  No a-priori separating level is known, and
+        whether contraction of the IMG is decidable is open.
+        """
         gens = [(self.index[g], F) for g in self.letters] + \
                [(self.index[g], B) for g in self.letters]
-        seen = set()
+        seen = {}
         frontier = []
         for w in gens:
             w = _reduce_word((w,))
-            if w not in seen:
-                seen.add(w)
+            k = w if level is None else self._level_signature(w, level)
+            if k not in seen:
+                seen[k] = w
                 frontier.append((w, 0))
         while frontier:
             w, d = frontier.pop()
             if d >= depth or len(seen) > cap:
-                return seen, False
+                return set(seen.values()), False
             for x in range(len(self.sheets)):
                 s = self.section(w, x)
-                if s not in seen:
-                    seen.add(s)
+                k = s if level is None else self._level_signature(s, level)
+                if k not in seen:
+                    seen[k] = s
                     frontier.append((s, d + 1))
-        return seen, True
+        return set(seen.values()), True
 
-    def is_contracting(self):
-        elements, closed = self.nucleus()
-        return closed
+    def is_contracting(self, level=None):
+        """Is the section closure finite?
+
+        level=None asks about pi_1 (free on the letters): the dedup is exact
+        (free reduction), so True proves pi_1 contracts; an infinite nucleus
+        just makes the enumeration run, so False is "not proved".  level=n
+        asks about the image in Sym(X^n), which is the IMG up to the level-n
+        kernel; that closure always terminates (the universe is finite) and
+        the number of classes, not the flag, is what matters.  The two can
+        disagree -- contraction of the IMG does not imply contraction of
+        pi_1, since kernel elements can have infinitely many sections.  See
+        `nucleus`.
+        """
+        return self.nucleus(level=level)[1]
 
     def level_generators(self, n):
         """Per letter, the permutation on level-n words as a dict
@@ -202,9 +264,11 @@ class RoseAutomaton(Automaton):
             secs = []
             for s in sheets:
                 ch = phi.chains[(e, s)]
-                src_sheet = cover.edges[(e, s)][0][1]
                 tgt_sheet = cover.edges[(e, s)][1][1]
-                secs.append(tuple((d[0][0], d[1]) for d in ch))
+                # ch is a path in traversal order; a stored section word is
+                # a group element with its left factor outermost, so store
+                # the reverse (see normalform.normal_form).
+                secs.append(tuple((d[0][0], d[1]) for d in reversed(ch)))
                 sig.append(tgt_sheet)
             sigma[e] = sig
             sections[e] = secs

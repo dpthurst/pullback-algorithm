@@ -1,4 +1,4 @@
-"""M2 core: normal form (130), biset data (140), group operations (150).
+"""M2 core: normal form (130), the collapsed biset (140), group operations (150).
 
 Cross-checks:
 - theta, tree {q}: the normal form reproduces [PChar] Fig. 3d
@@ -9,7 +9,13 @@ Cross-checks:
   relabelling (barycentric, tetrahedral: level orders and orbit counts);
 - the rabbit's normal form equals its direct rose automaton;
 - products/inverses/sections satisfy the wreath-recursion identities at
-  low levels, and the nuclei are finite (contracting).
+  low levels, and the nuclei are finite (contracting);
+- a multi-letter section word is stored left-factor-outermost, i.e.
+  reversed relative to the traversal order of the path
+  (test_product_section_order).  Getting this wrong left every
+  single-letter-section machine correct and made theta's tree {p} give
+  level-7 order 2^26 instead of 2^25; after the fix all three theta
+  trees give the published orders (test_theta_all_trees_same_orders).
 """
 
 import sys
@@ -25,6 +31,8 @@ from pullback.harmonic_io import load_session, parse_graph, parse_cover, parse_c
 from pullback.normalform import (normal_form, admissible_trees,
                                  is_admissible_tree)
 from pullback.automaton import Automaton, RoseAutomaton
+from pullback.covers import monodromy_cover
+from pullback.maps import make_graph_map
 from pullback.ribbons import F, B
 
 THETA = load_session(ROOT / "sessions" / "theta.json")
@@ -88,10 +96,11 @@ class TestNormalForm(unittest.TestCase):
         same automaton up to relabelling, so the level-n group orders and
         the orbit counts on X^n agree.
 
-        Only *admissible* trees: see test_inadmissible_tree_refused.  An
-        earlier version of this test compared theta's {p} and {q} at
-        levels 2-4, where the orders happen to agree; they part at level
-        7 (see test_theta_deep_orders) and {p} is not admissible at all.
+        Only *admissible* trees here: see test_inadmissible_tree_refused.
+        An earlier version of this test compared theta's {p} and {q} at
+        levels 2-4, where the orders happened to agree, and concluded the
+        trees differed at level 7; that difference was the section-word
+        order bug, not the trees.  See test_theta_all_trees_same_orders.
         """
         for name, session in (("barycentric", BARYCENTRIC),
                               ("tetrahedral", TETRAHEDRAL)):
@@ -133,14 +142,95 @@ class TestNormalForm(unittest.TestCase):
 
     def test_theta_deep_orders(self):
         """The published automaton, at depth: 2, 2^2, 2^3, 2^5, 2^8, 2^14,
-        2^25.  This is the check that tells the good presentation from a
-        bad spanning tree: tree {p} gives 2^26 at level 7 and 2^4 from
-        the other reading of the section.  Level 7 is cheap here
-        (128 points); levels 1-4 alone are not discriminating."""
+        2^25.  Level 7 is cheap here (128 points) and is the first level at
+        which a wrong word order in a multi-letter section shows up in the
+        order (level 4 shows it in the permutation).  See
+        test_theta_all_trees_same_orders for the other two trees."""
         base, cover, phi = THETA
         aut = normal_form(base, cover, phi)
         orders = [level_group(aut, n).order() for n in range(1, 8)]
         self.assertEqual(orders, [2, 4, 8, 32, 256, 16384, 2 ** 25])
+
+    def test_theta_all_trees_same_orders(self):
+        """All three spanning trees of theta give the published orders.
+
+        {p} and {r} are not admissible -- the shortcut's collapse is not
+        exact for them -- but they are still presentations of the same
+        virtual endomorphism, so the level-n groups must be isomorphic.
+        Before the section-word order was fixed, {p} gave 2^26 at level 7
+        (and a non-terminating section closure), which was read as
+        evidence that the tree was wrong.  It was the word order: {p} and
+        {r} are the only library trees whose sections include a
+        multi-letter word (theta {p}: r|_1 = q.r^-1).  The independent
+        check is the geometric level action of (pi, phi), computed by
+        lifting loops through the pullback tower with no tree at all: it
+        gives 2, 4, 8, 32, 256, 16384, 2^25.
+        """
+        base, cover, phi = THETA
+        for tree in ({"p"}, {"q"}, {"r"}):
+            with self.subTest(tree=sorted(tree)):
+                aut = normal_form(base, cover, phi, tree=tree,
+                                  require_admissible=False)
+                orders = [level_group(aut, n).order() for n in range(1, 8)]
+                self.assertEqual(orders, [2, 4, 8, 32, 256, 16384, 2 ** 25])
+                elements, closed = aut.nucleus()
+                self.assertTrue(closed, f"theta {sorted(tree)}: not contracting")
+
+    def test_product_section_order(self):
+        """A section word is a group element with its left factor
+        outermost, so a path d_1...d_k must be stored reversed.
+
+        Minimal witness, nothing to do with theta: one-vertex base with
+        loops x, y; three sheets; monodromy x -> (0 1 2), y -> (0 1);
+        phi(x, 0) = x.y and every other edge constant.  The section x|_0
+        is the path x then y; its geometric action on the second letter is
+        sigma_y o sigma_x = (1 2), so x acts on (0, 0) as (1, 0).  Storing
+        the word in traversal order -- which was the bug -- applies
+        sigma_x o sigma_y = (0 2) and gives (1, 2).  The level-2 group has
+        order 12 either way, so only the permutation catches it.
+        """
+        base = parse_graph("vxyXY")
+        cover = monodromy_cover(base, (0, 1, 2),
+                                {"x": {0: 1, 1: 2, 2: 0},
+                                 "y": {0: 1, 1: 0, 2: 2}})
+        phi = make_graph_map(cover, base, {("x", 0): [("x", F), ("y", F)]},
+                             {("v", s): "v" for s in (0, 1, 2)})
+        aut = RoseAutomaton(base, cover, phi)
+        # letters (x, y); the section x|_0 is the path x then y -> stored y,x
+        self.assertEqual(aut.sections["x"][0], ((1, 1), (0, 1)))
+        self.assertEqual(tuple(aut.state_action("x", [0, 0])), (1, 0))
+        self.assertEqual(tuple(aut.state_action("x", [0, 1])), (1, 2))
+        self.assertEqual(level_group(aut, 2).order(), 12)
+
+    def test_product_section_against_bartholdi(self):
+        """External witness for the section-word order, from Bartholdi's IMG
+        package: PoirierExamples entry [3,3], the map (2z-1)^-2, with machine
+
+            a = < , a^-1/b > (1,2),     b = < a, b >
+
+        (`img/gap/examples.gi`).  Read the section strings as paths in a
+        rose and rebuild them with RoseAutomaton: the level orders must be
+        FR's, 2, 8, 32, 64, 256, 2048 (FR 2.4.13, `FRGroup("a=<,a^-1/b>(1,2)",
+        "b=<a,b>")`).  With the old traversal-order storage the engine gives
+        2, 8, 32, 64, 128, 256 -- the orders part at level 5 -- so this is a
+        documented case that would have caught the bug without the geometric
+        oracle.  The whole Poirier table (29 machines, degrees 2 and 3) was
+        checked this way against FR on 2026-10-25 with 0 mismatches.
+        """
+        base = parse_graph("vabAB")
+        cover = monodromy_cover(base, (0, 1), {"a": {0: 1, 1: 0}})
+        phi = make_graph_map(
+            cover, base,
+            {("a", 1): [("a", B), ("b", B)],   # a^-1/b, read as a path
+             ("b", 0): [("a", F)],
+             ("b", 1): [("b", F)]},
+            {("v", s): "v" for s in (0, 1)})
+        aut = RoseAutomaton(base, cover, phi)
+        self.assertEqual(aut.sigma, {"a": [1, 0], "b": [0, 1]})
+        self.assertEqual(aut.sections["a"], [(), ((1, -1), (0, -1))])
+        self.assertEqual(aut.sections["b"], [((0, 1),), ((1, 1),)])
+        self.assertEqual([level_group(aut, n).order() for n in range(1, 7)],
+                         [2, 8, 32, 64, 256, 2048])
 
     def test_rabbit_normal_form_equals_rose(self):
         base, cover, phi = RABBIT
@@ -186,18 +276,52 @@ class TestGroupOperations(unittest.TestCase):
             self.assertEqual(aut.apply(w1, list(lw)), aut.apply(w2, list(lw)),
                              f"{w1} vs {w2} at {lw}")
 
+    def test_pi1_does_not_contract_where_the_image_does(self):
+        """`nucleus()` asks about pi_1, `nucleus(level=n)` about the image in
+        Sym(X^n); they can answer differently.
+
+        Witness: the machine currently shipped as twisted-rabbit --
+            a = (1, 1),  b = (b a b^-1 | c),  c = (b a b a^-1 b^-1 | 1)
+        with sigma_a the swap.  The letters are free generators, so reduced
+        words are elements of pi_1: the pi_1 closure reaches 106 words and is
+        still open, i.e. pi_1 is not contracting on the tree.  Deduped by the
+        action on level 4 it closes at 23 classes, and stays 23 at levels 5
+        through 8 -- evidence that the IMG contracts.  This is the
+        IMG-versus-pi_1 gap the author raised (2026-10-25); a finite kernel
+        pi_1 -> IMG would force the two to agree, an infinite one need not.
+        """
+        aut = Automaton(("a", "b", "c"), (0, 1),
+                        {"a": [1, 0], "b": [0, 1], "c": [0, 1]},
+                        {"a": [(), ()],
+                         "b": [((1, F), (0, F), (1, B)), ((2, F),)],
+                         "c": [((1, F), (0, F), (1, F), (0, B), (1, B)),
+                               ()]})
+        words, closed = aut.nucleus()
+        self.assertEqual(len(words), 106)
+        self.assertFalse(closed)
+        self.assertFalse(aut.is_contracting())
+        for n in (4, 5, 6, 7, 8):
+            elements, closed = aut.nucleus(level=n)
+            self.assertTrue(closed, f"level {n}")
+            self.assertEqual(len(elements), 23, f"level {n}")
+        self.assertTrue(aut.is_contracting(level=4))
+
     def test_nucleus_finite(self):
         """Both examples are contracting: the closure of the generators
         under sections is finite.
 
-        History (2026-10-24): with theta's tree {p} the word closure did
-        not terminate within cap=20000, and that was recorded as an open
-        observation with the suspicion that Automaton.nucleus deduped on
-        raw words.  It does dedupe on raw words, but that was not the
-        cause: deduping on the action on level 5 instead still gives 5105
-        classes by depth 40, still growing.  The cause was the spanning
-        tree: {p} is not admissible (is_admissible_tree), so there was no
-        automaton to close in the first place.  See test_inadmissible_tree_refused.
+        History (2026-10-24; re-measured 2026-10-25): with theta's tree
+        {p} the word closure did not terminate within cap=20000 (73
+        words by depth 40, not closed), and that was recorded with the
+        suspicion that Automaton.nucleus deduped on raw words.  It does
+        dedupe on raw words, but that was not the cause: deduping instead
+        on the action on level 5 still produced new classes at depth 40
+        (137 distinct level-5 actions over words of depth <= 40).  The
+        cause was the section-word order: {p}'s r|_1 = q.r^-1 is the one
+        multi-letter section, and with the word reversed at storage {p}
+        closes at 7 elements like every other tree (see
+        test_theta_all_trees_same_orders).  The admissible-tree gate is a
+        statement about the shortcut's exactness, not about convergence.
         """
         for name, sess in (("theta", THETA), ("rabbit", RABBIT)):
             with self.subTest(session=name):

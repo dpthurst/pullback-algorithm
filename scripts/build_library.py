@@ -67,15 +67,27 @@ EXAMPLES = {
                  "code never ran the untwisted rabbit for energies."),
     },
     "twisted-rabbit": {
-        "source": "Harmonic Examples.lhs 'Hamal birthday conference' (Dehn twist of rabbit)",
+        "source": "Harmonic Examples.lhs 'Hamal birthday conference' (Dehn twist of rabbit); third token corrected 2026-10-25",
+        "graph": "xaAbBcC", "cover": "a01", "phi": "b0Bab c0BAbab a0c",
+        "note": ("TWISTED rabbit as a topological map hR (h fixing P): the dynamics ON P is that of the "
+                 "rabbit, so every cycle of P must contain a branch point -- and it does: hyperbolic type. "
+                 "The first two tokens are the rabbit's b0, c0 conjugated by ab, exactly as the Harmonic "
+                 "text says; the third is the rabbit's own a0c.  THE AUTHOR CONFIRMED 2026-10-25 that this "
+                 "is the actual twisted rabbit.  The Harmonic import had 'b1c' there, which drops a0 -> c "
+                 "and adds b1 -> c; that string is now the session twisted-z2i."),
+    },
+    "twisted-z2i": {
+        "source": "Harmonic Examples.lhs 'Hamal birthday conference', string as written there",
         "graph": "xaAbBcC", "cover": "a01", "phi": "b0Bab c0BAbab b1c",
-        "note": ("TWISTED rabbit as a topological map hR (h fixing P): its dynamics "
-                 "ON P is that of the rabbit, so every cycle of P should contain a "
-                 "branch point.  The type classifier on this string finds an UNBRANCHED "
-                 "cycle — further evidence that the description is wrong (the third "
-                 "token 'b1c' is suspect; there is no b1 token in the corrected rabbit).  "
-                 "The author may supply the correct string; longer term the app "
-                 "will derive twists itself from a curve (deferred front end, plan)."),
+        "note": ("THE AUTHOR BELIEVES (2026-10-25) this describes a twist of z^2+i, not of the rabbit, and "
+                 "has NOT checked whether it is obstructed ('some twists of z^2+i are obstructed').  "
+                 "Consistent with that: on this spine the untwisted map with the same first two tokens is "
+                 "'b0a c0b b1c', whose type is 'cycle without branch point' -- as for z^2+i, whose critical "
+                 "orbit is i -> -1+i <-> -i with no branch point on the 2-cycle -- while the rabbit's 'a0c' "
+                 "variant is hyperbolic.  NOT VERIFIED as z^2+i.  Kept because it is the library's only "
+                 "machine where pi_1 fails to contract on the tree while the image contracts: pi_1 closure "
+                 "106 words and open, 23 classes by the level-4 action and still 23 through level 8 (the "
+                 "IMG-versus-pi_1 case, AGENTS.md A0)."),
     },
     "grigorchuk": {
         "source": "Harmonic Examples.lhs 'The Grigorchuk group'",
@@ -120,7 +132,18 @@ EXAMPLES = {
                  "periodic cycles); hyperbolic orbifold (4,4,4,2).  The MAIN THEOREM OF [PChar] "
                  "does not apply to this example.  THE AUTHOR HAS NOT CHECKED THIS EXAMPLE "
                  "CAREFULLY — treat the data as unverified until the engine's checks pass.  "
-                 "Old-code targets (M3): EL_v/EL_h converges toward 1.637 = (1.279)^2 from "
+                 "CHECKED 2026-10-25 AND IT FAILS: the shipped phi collapses all six cover "
+                 "faces (face_map_phi: 6 collapsed, 0 essential), so it is not a ribbon map "
+                 "and type_classification refuses it ('base face 0 has 0 marked cover faces'). "
+                 "The string is verbatim from Harmonic Julia.lhs line 80, so this is inherited, "
+                 "not a transcription slip; no rotation of the two flowers and no choice of "
+                 "the monodromy edge rescues it (searched: all dihedral variants at a and b "
+                 "crossed with q01/p01/r01/s01, never more than 0 essential faces).  The "
+                 "covering portrait is consistent with (2z^2-4)/z^2: degrees [2,1,1,2,1,1], "
+                 "the two critical values.  A corrected phi is needed.  Author's prediction "
+                 "(2026-10-25): the corrected data has no branched cycles — the postcritical "
+                 "dynamics is inf ->(2) 2 -> 1 <-> -2, and no critical point lies on the "
+                 "1 <-> -2 cycle.  Old-code targets (M3): EL_v/EL_h converges toward 1.637 = (1.279)^2 from "
                  "the Schwarz-Christoffel rectangle on S^2-{inf,-2,1,2}; old starting weights "
                  "(2,1,2,1) on p,q,r,s, ratio table in Julia.lhs."),
     },

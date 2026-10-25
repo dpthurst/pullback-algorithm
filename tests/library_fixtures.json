@@ -160,6 +160,30 @@
     ],
     "portrait_nonface_projections": []
   },
+  "twisted-z2i": {
+    "validation": {
+      "cover_connected": true,
+      "base_connected": true,
+      "pi1_surjective": true
+    },
+    "spine_euler": 2,
+    "spine_mirrored": true,
+    "ribbon_boundary": {
+      "essential": 4,
+      "collapsed": 2,
+      "ok": true
+    },
+    "cover_euler": 2,
+    "portrait_degrees": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "portrait_nonface_projections": []
+  },
   "grigorchuk": {
     "validation": {
       "cover_connected": true,

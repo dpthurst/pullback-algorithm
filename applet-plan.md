@@ -156,28 +156,64 @@ for Thurston's algorithm (150, 230).
      label in R₁, the element of π₁(R₀) represented by φ(e)). The normalised
      form is decided by the choice of T₀ up to conjugacy; the app can show the
      effect of a different T₀ as a consistency check.
-     *Correction (measured 2026-10-24; the sentence above was too strong).* Not
-     every spanning tree can be used: the collapse π⁻¹(T₀) ↦ pt inside Γ₁ is
-     compatible with φ only if φ sends each lift of a tree edge to a **point** of
-     R₀ — this is the condition the paper states for its own example ("the two
-     c edges of Γ₁ map with a constant map to the two vertices of Γ₀", c being
-     the tree). Call such a tree *admissible*. Theta has three spanning trees
-     and exactly one admissible one, {q}, which is the paper's tree c (paper
-     a=p, b=r, c=q); it reproduces Fig. 3d and has level orders
-     2, 2², 2³, 2⁵, 2⁸, 2¹⁴, 2²⁵. On the inadmissible tree {p} the section
-     closure does not terminate (5105 distinct level-5 actions by depth 40) and
-     the two natural readings of the section — φ of the whole lifted loop
-     τgτ⁻¹, or φ of the generator's lift alone — disagree (level-7 orders 2²⁶ vs
-     2⁴, against 2²⁵); neither is the map's. Over the 58 spanning trees of the
-     14 library sessions, admissibility holds for 14, and exactly on those do
-     the two readings give identical data; on the sessions with two admissible
-     trees (barycentric, tetrahedral) the automata agree up to relabelling, so
-     the consistency check of this item is a check over admissible trees.
-     Implemented as `normalform.is_admissible_tree` / `admissible_trees`, with
-     the default tree chosen admissible; an inadmissible tree is refused unless
-     asked for explicitly (`require_admissible=False`). Two library sessions
-     have **no** admissible tree — `blown-up-lattes` and `census-53` — so their
-     rose automaton is not justified by their data as it stands; open.
+     *Correction (2026-10-24, author's argument; supersedes an earlier note of
+     the same day that claimed too much).* Every component of π⁻¹(T₀) is a tree,
+     hence contractible, so **every** φ is homotopic to a map constant on each
+     component — homotope φ|C to a point and drag the incident edges along; the
+     homotopy leaves φ_* alone, so the virtual endomorphism h = φ_*∘π_*⁻¹ is
+     untouched and R₁ → R₀ always exists. There is no obstruction and no
+     "inadmissible" session: the construction is available for every (π, φ) and
+     every spanning tree, the tree only choosing a presentation.
+     What is *not* available for every tree is the shortcut the engine used: read
+     the section as φ of the lift of τgτ⁻¹. That is exact only when φ already
+     kills the lifted tree ("admissible" in the earlier note), because otherwise
+     the collapsed part of the loop carries a nontrivial loop into R₀ and the
+     reading silently differs from the homotoped one. Measured: the two readings
+     agree on exactly 14 of the 58 spanning trees of the library, and they are
+     exactly the trees where φ kills the lifted tree. So the correct recursion
+     comes from a transversal: with t(x) ∈ π₁(Γ₀) a loop lifting to the vertex of
+     class x,
+         g|_x = h( t(σ(g,x))⁻¹ · g · t(x) ),   g·t(x) = t(σ(g,x))·(g|_x),
+     and the composite lies in H = π_*π₁(Γ₁) by construction, so its lift to Γ₁
+     closes — a check that can fail and does when the bookkeeping is wrong.
+     *Status (2026-10-24): **not fixed yet**.* The construction is implemented in
+     `.scratch/nf_transversal.py`; the matrix of the four convention choices is in
+     AGENTS.md §A11. With σ read as the class of the lift at x, "t(x) first"
+     composition closes on all 7 trees but still returns 2²⁶ for theta {p};
+     with the other composition all three theta trees return 2²⁵ but two
+     blown-up-lattes trees fail the closure assertion. So the bug is narrowed but
+     not found, and nothing is shipped: the engine keeps the admissible-tree
+     shortcut.
+     *Fixed (2026-10-25).* It was none of the four conventions: a section word is
+     a group element and the engine applies it left-factor-outermost, but
+     `normal_form` and `RoseAutomaton` stored the φ-image of the lifted loop in
+     traversal order. For a two-letter section the two differ, and the mirror
+     machine agrees at level 2 exactly when every letter acts as an involution on
+     level 1 — so theta's {q} (all sections one letter) was right and {p}
+     (r|₁ = q·r⁻¹) gave 2²⁶. Both constructors now store the reversed word. All
+     three theta trees then give 2¹, 2², 2³, 2⁵, 2⁸, 2¹⁴, 2²⁵ and are
+     contracting, FR agrees on the corrected machine, and the independent check
+     is a geometric level-n action of (π, φ) computed by lifting through the
+     pullback tower with no tree at all (it reproduces the rabbit's and theta's
+     published sequences and gives 2²⁵). The transversal recursion above is
+     therefore not needed for this; it was measuring the same mirror machine.
+     AGENTS.md §A0, "Resolved", and §A0.6 have the detail and the two regression
+     tests.
+     *Check to run when the library is bigger (author's suspicion, 2026-10-24:
+     "most of the time that check will fail").* Record, over the sessions as they
+     are added, the fraction of spanning trees that pass `is_admissible_tree`.
+     On today's 14 sessions it is 14 of 58 — the check fails more often than it
+     passes — and theta alone has 1 of 3. If it keeps failing at that rate the
+     gate is not a practical primary path: it exists only to make the current
+     shortcut exact, so the transversal construction should replace it and the
+     tree should be chosen arbitrarily. Until then the gate stays, and the number
+     to watch is that fraction, not a proof.
+     `normalform.is_admissible_tree` / `admissible_trees` and the default-tree
+     choice remain in force for the shipped engine, as a *shortcut validity*
+     check, not as a claim about the data. The groupoid biset of item 140 is
+     the natural object, but the single-basepoint recursion does not need it:
+     the transversal suffices, and 140 now records the decision that the
+     collapsed shadow is what the engine carries.
 - **140.** The **biset** B: sheets X = {1..d} with the free right G-action of the
      cover monodromy and the left G-action by the sections of 130; the wreath
      recursion g = σ_g · (g|_x)_{x∈X} is the same data in Nekrashevych's form.
@@ -188,18 +224,117 @@ for Thurston's algorithm (150, 230).
      biset** — the graph presentation is already a groupoid presentation
      (objects = vertices of Γ₀), and the single-basepoint group biset of
      Bartholdi's program is its collapsed shadow, losing effectiveness by
-     insisting on one basepoint. Internal model: the groupoid biset over the
-     vertex set; the collapsed group biset (after 130's collapse to the
-     rose) is a derived view, used for the IMG cross-check and for the
-     display conventions pinned here.
+     insisting on one basepoint.
+     **Author's decision (2026-10-25): the collapsed shadow suffices for
+     now.** The engine carries the single-basepoint group biset after 130's
+     collapse to the rose — the wreath recursion above, which is what
+     `Automaton`/`RoseAutomaton` hold; no groupoid-over-the-vertex-set
+     machinery is built. It is enough for two reasons. (a) What lies downstream
+     already consumes the collapsed form: in IMG 0.3.3 `ThurstonAlgorithm` and
+     `ThurstonObstruction` take an `IsSphereMachine` and `SpiderAlgorithm` an
+     `IsFRMachine` — wreath recursions, not groupoids (`img/gap/thurston.gd`,
+     `machine.gd`, checked 2026-10-25). (b) Every question asked so far is
+     single-basepoint — the level action, the nucleus, the Schreier graphs, the
+     FR cross-check. The price is effectiveness, and it is real rather than
+     notional: the collapsed representation can have a kernel π₁ → IMG, which
+     `twisted-z2i` exhibits (`AGENTS.md` A0.1–2). Revisit only if something
+     needs the vertex-anchored biset, or effectiveness as a statement.
+     *Convention, as the engine implements it (settled 2026-10-25):* states =
+     generators of π₁(Γ₀), alphabet = the d sheets, **left** action, left factor
+     outermost, sections stored as group elements, so a geometric section given
+     in traversal order is reversed (130). FR acts on the right and
+     `scripts/img_crosscheck.py` reverses multi-letter sections on emission.
+     [Nekrashevych, *Self-similar groups*, §2] is the formal citation for the
+     convention; what settled it in practice was the geometric tower oracle
+     agreeing with the engine, and FR agreeing with both (0 mismatches).
 - **150.** Group operations by recursion: products, inverses, sections, the action on
      Xⁿ (a permutation of dⁿ letters), the nucleus, the contracting test,
      word growth for finite-state automata, the image of π₁(Γ₀) in Aut(X*)
      (the iterated monodromy group), and the level-n Schreier graphs.
-     Cross-check: [PChar, Fig. 3d] for (1+z²)/(1−z²), and — if GAP with
-     Bartholdi's FR (the successor of `selfsim`) can be installed here — a
-     second implementation; its companion package IMG additionally covers
-     Thurston's algorithm, see 230.
+     *Status (2026-10-25).* Implemented: products, inverses, sections, the level-n
+     action, the nucleus, level-n Schreier graphs, the Fig. 3d check and the FR
+     cross-check (0 mismatches; σ/sections and the level action validated).  Not
+     implemented, and deferred by the author (see below): word growth, and the IMG as a group
+     (only its level images exist — the kernel of π₁ → IMG can be nontrivial, e.g. `twisted-z2i`).
+     Contraction: **the author's decision (2026-10-25) is to work with the graph π₁
+     for now** — much simpler — and generalise to π₁^orb and the IMG later.  The
+     engine's `nucleus()` is exactly the π₁-nucleus, computed with exact dedup (free
+     reduction), so it is a semi-decision; `nucleus(level=n)` gives the image on Xⁿ,
+     which is the IMG up to the level-n kernel.  The two differ on `twisted-z2i`
+     (π₁ does not contract, the image does), which is why the group has to be named
+     whenever contraction is reported.
+     Word growth: deferred (author, 2026-10-25).  On the graph π₁ it is trivial — free of
+     rank g, so 2g(2g−1)^{n−1} elements of length n — and the interesting growth is that of
+     the IMG, which presupposes the IMG as a group (deferred, see below; only its level images exist).
+     Nothing else in the pipeline consumes it.  The author's reasons for flagging it: it is
+     related to the p = ∞ energy "in some way I have not personally fully understood"; the
+     Grigorchuk group has intermediate growth and its exact growth rate is not known
+     (Bartholdi, 2000; later work unchecked).  The 1/2 he recalls is the **asymptotic**
+     energy ᴱE^∞ = lim (E^∞_∞(φⁿ))^{1/n}, which is independent of the starting weights —
+     not Lip on an explicit representative (the library's Lip values: theta 1, julia-4422 1,
+     julia-4442 2, census-53 ≈ 2.906; grigorchuk has no weights) — and for the Grigorchuk
+     example it comes from a suitably orbifolded graph, i.e. from π₁^orb, deferred with the
+     rest of the orbifold.  ᴱE^∞ is not computable in the engine: E^p_∞ of an iterate is not
+     implemented.  Author's expectation (2026-10-25): for examples with an unbranched cycle,
+     ᴱE^∞ will usually be 1.
+     The cheap stand-ins the app already computes are the level-image orders |G_n| and the
+     nucleus size, which measure the action's growth, not the word metric.
+     **The IMG as a group is deferred** (author, 2026-10-25): computing it is a challenging
+     task and it is **not necessary for the main applet**. The deliverable stays the level-n
+     images plus `nucleus(level=n)` — the IMG up to the level-n kernel — and the kernel of
+     π₁ → IMG is named where it matters (`twisted-z2i`) but never computed. Out of scope unless
+     the author asks: the quotient π₁ → IMG as an object, its word problem, its exact nucleus,
+     `FRGroupByVirtualEndomorphism` as a check on the derivation, and the IMG's word growth.
+     Emitting a sphere machine for IMG's *external* `ThurstonObstruction`/`SpiderAlgorithm` is a
+     different thing (200, 140) and is unaffected: that consumes σ/sections, which the engine has.
+     Cross-check: [PChar, Fig. 3d] for (1+z²)/(1−z²), and Bartholdi's FR
+     (the successor of `selfsim`) as a second implementation; its companion
+     package IMG additionally covers Thurston's algorithm, see 230.
+     *Status of that cross-check (2026-10-24).* FR needs IO, GAPDoc,
+     Polycyclic and FGA; only IO was missing, and FR uses it in four places,
+     all in the graphviz/Jupyter *drawing* path, never in the automaton
+     mathematics. FR and IMG therefore stay byte-identical to their published
+     tarballs (no patching). IO is absent from this machine, possibly by design
+     (it is the package that gives GAP files and sockets), so the stub that
+     satisfies the loader lives *inside the project* as a private GAP root,
+     `.scratch/gap-root/pkg/io`, opted into only by `.scratch/gap.sh`; nothing
+     is installed in the shared GAP root. Under that wrapper `LoadPackage("fr")`
+     and `LoadPackage("img")` are both true and FR's own `tst/testall.g` reports
+     0 failures in 6 files; plain `gap` still has no IO.
+     *Done (2026-10-24): 0 mismatches.* `scripts/img_crosscheck.py --gap
+     .scratch/gap.sh` emits each session's wreath recursion as FRGroup
+     definitions (from the engine's own σ/sections, nothing transcribed) and
+     compares the level actions. theta: 2, 4, 8, 32, 256, 16384, 2^25 — FR and
+     the engine agree at every level 1–7. rabbit: 2, 8, 128, 16384, 2^28, 2^56 —
+     agree at every level 1–6. Both are contracting for FR's `IsContracting`
+     too. The nucleus sizes differ *by definition*, and both are right: ours is
+     the closure of the generators and their inverses under sections, counted as
+     reduced words (theta 5, rabbit 7); FR's `NucleusOfFRSemigroup` is the set of
+     limit states of all elements (theta 4, rabbit 13). theta reconciles exactly,
+     because r is an involution and our 5 words are 4 elements; for the rabbit
+     ours is a subset (all 7 words are in FR's 13) and FR's extra states include
+     products such as a⁻¹b, which the limit-state definition admits. So the
+     sharp comparison is the level orders, not the nucleus size.
+     *Convention note (2026-10-25).* FR acts on words on the **right** — its
+     manual defines (xv)a = x^{π_a}·(v)a_x, with a acting first on each subtree
+     xX* and then permuting them — so ρ_FR(g) = ρ_ours(g⁻¹), and every
+     multi-letter section word is reversed when it is handed to FR;
+     `scripts/img_crosscheck.py` does that and prints what it reversed. The
+     agreement above is unaffected, because the machines with single-letter
+     sections (theta's {q}, the rabbit) need no reversal. *Correction
+     (2026-10-25):* the earlier reading of theta {p} here was wrong. The engine
+     was storing the *traversal* word of a section rather than the group
+     element, so reversing it for FR produced a machine that was right for FR
+     and wrong for the engine, and both reported 67108864; the number was 2²⁶
+     because of that bug, not because of the convention. With the storage fixed
+     (item 130) the reversal does what it says: FR on `r=<q^-1,q*r^-1>` gives
+     33554432, the engine's number, and the string that gives 67108864 is the
+     old one. FR still only arbitrates the *machine*; what checks the
+     derivation from (π, φ) is now the geometric tower action of item 130,
+     which FR also confirms on a 3-sheet product-section witness (orders 6, 12,
+     12). This validates σ/sections, the level action and the closure against an
+     independent implementation; for the derivation, either `FRGroupByVirtualEndomorphism`
+     or IMG's rational-map route (PoirierExamples, PolynomialSphereMachine), see 230.
 
 ### C. Energies — the core, and the part with real risk
 - **160.** **Emb(ψ) for a given map** is elementary and exact: the integrand
@@ -224,6 +359,16 @@ for Thurston's algorithm (150, 230).
      open question); fixed points can be non-maximal, and Algorithm *Emb* is
      the fix; the paper says it "appears to run quickly, at least for small
      examples", which is exactly our regime.
+     *Independent upper bound, no minimisation needed (2026-10-24; the
+     author's correction of an earlier miscount).* πⁿ₀ is a covering of degree
+     deg(π)ⁿ; π is an isometry on edges, so the dilation of φⁿ₀ at a preimage
+     telescopes to the *product* of the dilations at x₁…x_n, and summing over
+     the tree of preimages is a matrix power on the base edges,
+     M[l][l′] = Σ δ(f)^(p−1) over traversals of base edge l by φ(f) with
+     π(f) = l′. Then Fill^p(φⁿ₀) = Mⁿ·1 and
+     ᴱE^p_p ≤ (max_l (Mⁿ1)_l)^{1/(pn)} → ρ(M)^{1/p}. For p = 2 this is a cheap
+     *upper* bound on Emb[φⁿ] that the [Elast, §6] minimiser must come in at or
+     below — an acceptance check for Algorithm *iter*, not a substitute for it.
 - **180.** **Independent lower and upper bounds** (always available, no convergence
      question):
      - upper: Emb(ψ) for any explicit ψ ∈ [φ] (compute a good ψ by iterating
@@ -253,6 +398,23 @@ for Thurston's algorithm (150, 230).
        small-n certificate is not evidence of an obstruction — "undecided"
        is a common honest state for carpets; and optimizing α (and the
        spine) is essential for reaching any certificate, not a refinement.
+     *Status (2026-10-25).* On `p-ne-2-energies` the explicit-representative energies
+     E^p_p[φⁿ] exist for every p via the fill matrix, but **E^p_∞ of an iterate is not
+     implemented** (it needs the edge decomposition, not just the filling), so the
+     asymptotic ᴱE^∞ cannot be computed yet.  The author notes that this is the quantity
+     he had in mind for the Grigorchuk example — he recalls ᴱE^∞ = 1/2 there — and that it
+     would come from a suitably *orbifolded* graph, i.e. from π₁^orb, which is deferred.
+     Since ᴱ is weight- and spine-independent (above), the explicit Lip values are the
+     wrong object for the question.  Author's expectation: for examples with an unbranched
+     cycle, ᴱE^∞ will usually be 1.
+     *Note (agent, 2026-10-25, not the author's).* ᴱE^∞ should be the *easiest* of the
+     asymptotic energies to implement: since l₀(φⁿ(e))/α_n(e) telescopes into a product of
+     the edge dilations δ along the orbit (A0.2), Lip(φⁿ) is a max over length-n paths in a
+     finite graph, so ᴱE^∞ = lim Lip(φⁿ)^{1/n} is the **max-plus (tropical) eigenvalue** of
+     the dilation matrix — the maximum over cycles of the geometric mean of δ — computable by
+     Karp's algorithm, no Perron–Frobenius needed.  That matches "the p = ∞ energy is easily
+     computed", and it explains the unbranched-cycle expectation: a boundary loop carried
+     along the cycle has dilation 1, so the max cycle mean is 1 and ᴱE^∞ = 1.
        The old code's OptFilling.lhs is the seed of that optimizer.
 - **200.** **Obstruction matrices** ([PChar, §7.4]): for a multi-curve C on Γ₀,
      M_{C,p}[i,j] = Σ over components D of π\*C_i with φ_*D ∼ C_j of
@@ -262,10 +424,25 @@ for Thurston's algorithm (150, 230).
      complexity — giving a **negative certificate**: an obstruction exhibited
      by an eigenvector. Together with 190 the app decides rationality whenever
      it finds either certificate, and says "undecided" otherwise.
+     *Deferred example (author, 2026-10-25).* The session `twisted-z2i` — the
+     string Harmonic wrote for the "Hamal birthday conference" example,
+     `b0Bab c0BAbab b1c` — is, in the author's belief, a twist of z²+i, and
+     whether it is obstructed is deliberately left as an open question, to be
+     settled by this machinery when it exists. In principle it can be read off
+     from Bartholdi–Nekrashevych, *Thurston equivalence of topological
+     polynomials*, or Belk–Lanier–Margalit–Winarski, *Recognizing topological
+     polynomials by lifting trees*; the author prefers not to chase it by hand.
+     The orbifold is hyperbolic (χ_orb = −1), so the usual criterion applies,
+     and on a 4-punctured sphere only the three 2+2 multi-curves need checking.
+
 - **210.** **Plots**: Emb[φⁿ]^{1/n} against n with the certified bracket; ᴱE^p_p
      against p ∈ [1, ∞] (monotone by [PChar, Prop. 6.10], with the
      d^{−1/p+1/q} lower bound as a drawn band) — the app can generate data for
      the open questions in [PChar, §6] and for Q(π,φ) in §7.5.
+     Author's decision (2026-10-25): **iterate plots are scripts and static
+     figures**, not an interactive page — there is no applet shell yet, and M3
+     is not to wait for one. Each plot script writes a deterministic figure
+     (fixed seed, no display) from the library, and M5 may port it later.
 
 ### D. The rational map
 - **220.** **Decision.** By Theorem 1, rational ⟺ ᴱE²₂ < 1; the certificates of 190
@@ -361,6 +538,17 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      library of 90 with expected outputs recorded as fixtures (350).
 - **310.** **M2 — algebra.** 130–150: the normal form, the biset, the group
      machinery, level-n Schreier graphs; the Fig. 3d relations as a test.
+     *Status (2026-10-25).* **Done:** the normal form on any spanning tree (130; the
+     section-word order bug fixed, all θ trees agreeing), group operations and level-n
+     Schreier graphs (150), the Fig. 3d check, and the FR cross-check (0 mismatches). The
+     biset (140) is settled as its collapsed single-basepoint shadow (author, 2026-10-25),
+     which is what the wreath recursion already is; no groupoid biset is built.
+     **Deferred, by the author's decision of 2026-10-25:** the IMG as a group (a challenging
+     task, not necessary for the main applet — see 150); word growth (150).
+     **Open in M2, in the author's order:** contraction on the graph
+     π₁ only (his decision; π₁^orb and the IMG later); the rabbit's three presentations
+     verified only to level 6.
+
 - **320.** **M3 — energies.** (The type classification of §1 — hyperbolic
   type / cycle without branch point / non-compact, [PChar] §1.2 — belongs here
   with the main theorem's hypothesis; it is not a data-validity check: author,
@@ -368,6 +556,31 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      §3, §5, §6] need a careful read before coding, and the convergence
      caveats of 170 are real. Deliverable: a number for Emb[φ], with its
      certified bracket, and the iterate plot with certificates.
+     *Contraction is type-conditional (author, 2026-10-24).* For a map with a
+     cycle in P containing no branch point (e.g. z²+i), the automaton is **not**
+     contracting on π₁(S²∖P) and is not meant to be: it is contracting only on
+     the orbifold quotient of π₁. So "the automaton is not contracting" is a
+     *defect* only for hyperbolic type, and the type classification gates every
+     reading of it. Two consequences for the engine: (a) never report
+     non-contraction as a data error — for the unbranched-cycle type it is the
+     expected answer and the invariant lives on the orbifold; (b) the IMG and its
+     nucleus should be computed on the orbifold quotient when the type calls for
+     it. And a caveat on our own test: `Automaton.nucleus` closes the generators
+     under sections **deduping on reduced words**, so its non-termination is not
+     a proof of non-contraction — it can fail to terminate for a contracting
+     group whose generating set has relations among the section words. Before any
+     contraction claim, dedupe by element (the action on a level, with a stated
+     separation bound) or build the finite Mealy machine when one exists.
+     *State (2026-10-24).* The p ≠ 2 part is paused by the author and expected
+     to be rewritten — the equations are linear only at p = 2. Two facts fixed
+     for whatever replaces it: πⁿ₀ is a covering of degree deg(π)ⁿ (author),
+     so |V(G_n)| = deg(π)ⁿ|V(G₀)| and |E(G_n)| = deg(π)ⁿ|E(G₀)|; and edges of
+     G_n are cut where the coordinates cross vertices, all n coordinates at the
+     same parameter values, which is what makes each edge map homeomorphically.
+     Enumerating G_n by edges whose φ-image is a single dart undercounts —
+     census-3.2's max Fill² at n = 2 comes out 4 instead of 7. The p ≠ 2
+     implementation lives on the local branch `p-ne-2-energies`, not on main;
+     the matrix bound in 170 is the cheap check it has to respect.
 - **330.** **M4 — the rational map.** 220–240; numerical; scoped to the paper's
      examples and the polynomial family first, with the Thurston pullback of
      230 (decided 2026-10-23) as the engine and Bartholdi's IMG as the
@@ -444,7 +657,9 @@ wanted; eventually the reverse input route, rational map → graph data
 (80, 85).
 D4 — example data from [Harmonic], machine-readable (90).
 D5 — no interval arithmetic initially; exact certificates + bracketed
-numerics (360).
+numerics (360). **Reconfirmed by the author 2026-10-25** ("no need for interval
+arithmetic at this time"), which also settles how the energies layer's
+`Energy(base, exponent)` is meant to be read: exact base, numeric bracket.
 D6 — algebra (M2) before energies (M3) (§5).
 Also amended after review: the reconstruction engine of 230 is the Thurston
 pullback algorithm, not a direct solve of the critical-portrait equations.

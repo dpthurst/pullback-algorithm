@@ -1,0 +1,8 @@
+{
+  "source": "Harmonic Examples.lhs 'Hamal birthday conference', string as written there",
+  "graph": "xaAbBcC",
+  "cover": "a01",
+  "phi": "b0Bab c0BAbab b1c",
+  "note": "THE AUTHOR BELIEVES (2026-10-25) this describes a twist of z^2+i, not of the rabbit, and has NOT checked whether it is obstructed ('some twists of z^2+i are obstructed').  Consistent with that: on this spine the untwisted map with the same first two tokens is 'b0a c0b b1c', whose type is 'cycle without branch point' -- as for z^2+i, whose critical orbit is i -> -1+i <-> -i with no branch point on the 2-cycle -- while the rabbit's 'a0c' variant is hyperbolic.  NOT VERIFIED as z^2+i.  Kept because it is the library's only machine where pi_1 fails to contract on the tree while the image contracts: pi_1 closure 106 words and open, 23 classes by the level-4 action and still 23 through level 8 (the IMG-versus-pi_1 case, AGENTS.md A0).",
+  "name": "twisted-z2i"
+}

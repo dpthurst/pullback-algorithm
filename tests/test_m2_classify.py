@@ -25,10 +25,17 @@ class TestClassification(unittest.TestCase):
         r = type_classification(*load("rabbit"))
         self.assertEqual(r["type"], "hyperbolic type")
 
-    def test_twisted_rabbit_unbranched_cycle(self):
-        # the Harmonic note: "not every cycle in P is critical; you will
-        # never see the exponential decay"
+    def test_twisted_rabbit_hyperbolic(self):
+        # author's correction 2026-10-25: the twisted rabbit is hR with h
+        # fixing P, so its portrait is the rabbit's; hyperbolic.
         r = type_classification(*load("twisted-rabbit"))
+        self.assertEqual(r["type"], "hyperbolic type")
+        self.assertFalse(r["unbranched_cycles"])
+
+    def test_twisted_z2i_unbranched_cycle(self):
+        # the string as Harmonic wrote it; the author believes it is a twist
+        # of z^2+i (whose critical orbit i -> -1+i <-> -i has no branch point)
+        r = type_classification(*load("twisted-z2i"))
         self.assertEqual(r["type"], "cycle without branch point")
         self.assertTrue(r["unbranched_cycles"])
 

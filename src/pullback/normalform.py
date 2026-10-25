@@ -69,17 +69,21 @@ def is_admissible_tree(base, cover, phi, tree):
     paper states for its own example: "the two c edges of Gamma_1 map
     with a constant map to the two vertices of Gamma_0", with c the tree.)
 
-    Measured 2026-10-24, and the reason this is a gate rather than a
-    footnote: over the 58 spanning trees of the 14 library sessions this
-    condition holds for exactly 14, and exactly on those 14 do the two
-    natural readings of "the section" -- phi of the whole lifted loop
-    tau.g.tau^{-1}, or phi of the generator's lift alone (the tau-parts
-    lie in the collapsed tree, so they are points of R1) -- give
-    identical data.  On the other 44 they disagree, and the automaton is
-    not determined by the data: for theta's tree {p} the two readings
-    give level-7 group orders 2^26 and 2^4 where the true value is 2^25,
-    and the section closure under {p} does not terminate (5105 distinct
-    level-5 actions by depth 40, and growing).
+    Measured 2026-10-24: over the 58 spanning trees of the 14 library
+    sessions this condition holds for exactly 14, and exactly on those 14 do
+    the two natural readings of "the section" -- phi of the whole lifted loop
+    tau.g.tau^{-1}, or phi of the generator's lift alone (the tau-parts lie in
+    the collapsed tree, so they are points of R1) -- give identical section
+    words.  On the other 44 they differ.
+
+    This gates the *shortcut's presentation*, not the data: R1 -> R0 and the
+    virtual endomorphism exist for every tree (see AGENTS.md A0.4).  Measured
+    2026-10-25, after the section-word order fix: all three theta trees give
+    the same level orders 2, 4, 8, 32, 256, 16384, 2^25 and are contracting,
+    so an inadmissible tree is a different presentation of the same group, not
+    a different group.  What used to be read as evidence otherwise -- theta
+    {p} giving 2^26 and a non-terminating section closure -- was the
+    traversal-order storage bug in `normal_form` itself (AGENTS.md A0.6).
     """
     tree = set(tree)
     tree_set = tree
@@ -105,9 +109,10 @@ def normal_form(base, cover, phi, tree=None, require_admissible=True) -> Automat
     With `tree=None` the first admissible spanning tree is used, so the
     answer does not depend on the arbitrary tree `validate.spanning_tree`
     happens to produce (for theta that one was {p}, the inadmissible
-    one).  `require_admissible=False` computes the automaton anyway, for
-    inspection: an inadmissible tree gives data that is not well defined,
-    see `is_admissible_tree`.
+    one).  `require_admissible=False` computes the automaton on any tree,
+    without the shortcut check: the result is a valid presentation of the
+    same virtual endomorphism -- same level-n groups, different section
+    words -- see `is_admissible_tree`.
     """
     if tree is None:
         cands = admissible_trees(base, cover, phi) if require_admissible \
@@ -137,16 +142,9 @@ def normal_form(base, cover, phi, tree=None, require_admissible=True) -> Automat
         v = start_vertex
         lifted = []
         for d in path:
-            # the unique lift of d starting at v: dart (d[0], sheet) with
-            # matching sheet and orientation, starting at v
+            # the unique lift of d starting at v is the dart at v with the
+            # same label and the same orientation
             label, ori = d
-            v_sheet = v[1]
-            if ori == F:
-                s = v_sheet
-            else:
-                # the lift of (label, B) starting at (v, s) is the dart
-                # (label, s') with s' such that sigma(s') = s
-                s = v_sheet
             # find the cover dart at v over d
             found = None
             for dd in cover.flowers[v]:
@@ -209,7 +207,17 @@ def normal_form(base, cover, phi, tree=None, require_admissible=True) -> Automat
                 word.extend(phi.image_dart(d))
             word = reduce_chain(tuple(x for x in word if x[0] not in tree0set))
             sig.append(sheet_index[class_of[end]])
-            secs.append(tuple((index[d[0]], d[1]) for d in word))
+            # word is the phi-image of the lifted loop: a PATH, in traversal
+            # order.  A stored section word is a group element written left
+            # factor outermost -- (a, b) acts as rho(a) o rho(b), i.e. b
+            # first -- so the path d_1...d_k must be stored REVERSED.
+            # Storing traversal order computes the mirror action; it agrees
+            # with the geometry whenever every letter of a multi-letter
+            # section acts as an involution on level 1, which is why theta
+            # {q} (all sections one letter) never showed the error and
+            # theta {p} did (r|_1 = q.r^-1, level-7 order 2^26 instead of
+            # 2^25).  See tests/test_m2_core.py::test_product_section_order.
+            secs.append(tuple((index[d[0]], d[1]) for d in reversed(word)))
         sigma[g] = sig
         sections[g] = secs
     return Automaton(tuple(gens0), tuple(range(len(sheet_list))), sigma, sections)

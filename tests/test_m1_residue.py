@@ -103,5 +103,46 @@ class TestRibbonBoundary(unittest.TestCase):
                 self.assertEqual(len(col), fix[name]["ribbon_boundary"]["collapsed"])
 
 
+class TestFaceCanonicalOrder(unittest.TestCase):
+    """`RibbonGraph.faces()` must not depend on set iteration order.
+
+    The earlier version started from `set.pop()`, so both the face order and
+    each walk's starting dart changed with PYTHONHASHSEED between processes
+    (measured 2026-10-25: `make m0`'s face table and `type_classification`'s
+    face indices differed between seeds 0 and 42).  The first test compares
+    two subprocesses; the second pins the canonical form directly.
+    """
+
+    CODE = (
+        "import sys; sys.path.insert(0, 'src')\n"
+        "from pullback.harmonic_io import parse_graph\n"
+        "print(parse_graph('apqr bRQP').faces())\n"
+        "print(parse_graph('xaAbBcC').faces())\n"
+    )
+
+    def test_same_across_hash_seeds(self):
+        import os
+        import subprocess
+        outs = []
+        for seed in ("0", "1"):
+            env = dict(os.environ, PYTHONHASHSEED=seed)
+            proc = subprocess.run([sys.executable, "-c", self.CODE],
+                                  cwd=ROOT, env=env,
+                                  capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            outs.append(proc.stdout)
+        self.assertEqual(outs[0], outs[1])
+
+    def test_each_walk_is_canonically_rotated_and_sorted(self):
+        for text in ("apqr bRQP", "xaAbBcC"):
+            faces = parse_graph(text).faces()
+            keys = [tuple(str(d) for d in f) for f in faces]
+            self.assertEqual(keys, sorted(keys), text)
+            for f, k in zip(faces, keys):
+                rots = [tuple(str(d) for d in f[i:] + f[:i])
+                        for i in range(len(f))]
+                self.assertEqual(k, min(rots), text)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -102,19 +102,36 @@ class RibbonGraph:
 
     def faces(self):
         """Boundary components of the thickening: cycles of sigma . alpha,
-        each returned as a tuple of darts (the boundary walk)."""
-        unseen = set(self._dart_vertex)
-        out = []
-        while unseen:
-            d0 = unseen.pop()
+        each returned as a tuple of darts (the boundary walk).
+
+        The list is canonical: every walk starts at its smallest dart (by
+        `str`) and the walks are sorted by that key.  Determinism matters:
+        the earlier version started from `set.pop()`, so the face numbering
+        (and hence anything keyed by face index, e.g. `type_classification`)
+        changed with PYTHONHASHSEED between processes.
+        """
+        remaining = set(self._dart_vertex)
+        walks = []
+        for d0 in self._dart_vertex:        # dict order is insertion order
+            if d0 not in remaining:
+                continue
             walk = [d0]
+            remaining.discard(d0)
             d = self.sigma(self.alpha(d0))
             while d != d0:
-                unseen.discard(d)
+                remaining.discard(d)
                 walk.append(d)
                 d = self.sigma(self.alpha(d))
-            out.append(tuple(walk))
-        return out
+            walks.append(tuple(walk))
+
+        def key(w):
+            return tuple(str(d) for d in w)
+
+        def canonical_rotation(w):
+            n = len(w)
+            return min((w[i:] + w[:i] for i in range(n)), key=key)
+
+        return sorted((canonical_rotation(w) for w in walks), key=key)
 
     def mirror(self):
         """The globally reversed ribbon structure (every cyclic order
