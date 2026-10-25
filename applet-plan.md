@@ -383,10 +383,17 @@ for Thurston's algorithm (150, 230).
      not the escape); the barbell Emb[φ¹] = 5 < 6 (the explicit bound is not
      sharp); the bouquet Emb[fⁿ] = 1, 3/4, 5/8, 23/48 at n = 1..4, matching
      the published Harmonic values exactly from the fixed point alone.
+     **Scaling (2026-10-25).** The exact path above builds the relaxed polytope from all
+     simple marked curves of the source, which is exponential in |E(G_n)| (3, 23, 97, 5378
+     constraints at n = 1..4). `src/pullback/fastmin.py` adds the paper's own harmonic step
+     — a least-squares problem in the source vertices' *positions* (Harmonic.lhs `findPos`)
+     plus the push/pull type repair — in float64, and reproduces θ at n = 1..8 to ~1e-7
+     (0.864357 … 0.178296 and 1.5 … 0.227530). The exact engine remains the certificate
+     path at n <= 3.
      **Not implemented:** the escape procedure of Algorithm 6.49 (unnecessary
-     on every test case so far, including the paper's boundary example);
-     the minimiser at n = 5 (the simple-cycle enumeration of G_5 is past
-     practical reach — the dual search gives the bound there instead).
+     on every test case so far, including the paper's boundary example); the
+     fast path's degenerate cases (the bouquet at n >= 2 is wrong there: constant
+     chains; recorded as a skipped test).
      The session schema now carries `marked` (base vertices whose lifts are
      pinned; empty = the free class, the sessions' convention) and reserves
      `orbifold` (cone points, orbigraphs — independent of `marked`, so a

@@ -64,9 +64,38 @@ ENGINE_LIMIT = {
 }
 
 
+def compute_curves(n_max):
+    """Run the fast (position-based) minimiser on the theta session for the
+    two parameter sets of the figure, n = 1..n_max."""
+    from pullback.iterate_graphs import session_iterate
+    from pullback.fastmin import alg_iter
+
+    def edge_letter(e):
+        lab = e[-1] if isinstance(e, tuple) else e
+        while isinstance(lab, tuple) and len(lab) >= 1 and not isinstance(lab[0], str):
+            lab = lab[0]
+        return lab[0] if isinstance(lab, tuple) else lab
+
+    out = {}
+    for label, a in (("(4,4,1)", {"p": 4.0, "q": 1.0, "r": 4.0}),
+                     ("(1,1,1)", {"p": 1.0, "q": 1.0, "r": 1.0})):
+        vals = {}
+        for n in range(1, n_max + 1):
+            Gn, phin, G2 = session_iterate(ROOT / "sessions" / "theta.json", n)
+            alpha1 = {e: a[edge_letter(e)] for e in Gn.edges}
+            lams, _ell2, _m = alg_iter(Gn, G2, phin.chains, alpha1, dict(a))
+            vals[n] = lams[-1]
+            print(f"  computed {label} n={n}: {lams[-1]:.9f}", flush=True)
+        out[label] = vals
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "results" / "figure2_rubber.png"))
+    ap.add_argument("--compute", type=int, default=0, metavar="N",
+                    help="also compute the theta curves with the fast minimiser "
+                         "up to n=N (0 = only the paper's data)")
     args = ap.parse_args()
 
     import matplotlib
@@ -92,6 +121,13 @@ def main():
         xs = sorted(d)
         ax.plot(xs, [d[n] for n in xs], "^", ms=6, mfc="none",
                 mec=colours[label], mew=1.4, label=f"engine, DR limit {label}")
+
+    if args.compute:
+        computed = compute_curves(args.compute)
+        for label, vals in computed.items():
+            xs = sorted(vals)
+            ax.plot(xs, [vals[n] for n in xs], "x", ms=7, mew=1.6,
+                    color=colours[label], label=f"engine (fast) {label}")
 
     ax.set_yscale("log", base=2)
     ax.set_yticks([4, 2, 1, 1 / 2, 1 / 4, 1 / 8])
