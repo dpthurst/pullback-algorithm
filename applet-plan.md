@@ -407,7 +407,9 @@ for Thurston's algorithm (150, 230).
      bouquet n = 1,3 and θ n = 1), θ (4,1,4) n = 1 = 0.864356777 (the paper's); the
      harmonic step agrees with the exact QP at unit lengths over six cases
      (0 ≤ Dir − Dir_QP ≤ 3.5e-9, |v − v_QP| ≤ 1.9e-5, Dir_id exact). Slower than fastmin
-     (bouquet n = 5 in 31 s; θ n = 3..7 in 13, 215, 291, 2267, 5960 s; n = 8 pending)
+     (bouquet n = 5 in 31 s; θ n = 3..7 in 13, 215, 291, 2267, 5960 s — it matches
+     the paper's 0.309249 at n = 7; n = 8 attempted and abandoned 2026-10-26, a
+     cross-check not worth the hours)
      but correct everywhere; `tests/test_covermin.py` (16 tests) cross-checks it
      against the QP, the published values, the certificate and determinism.
      A database-wide iteration check (2026-10-26, all 15 sessions at n = 1..2,
