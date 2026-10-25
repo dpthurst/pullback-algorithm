@@ -30,8 +30,14 @@ you open:
 * **Map** — the session's rational map (its `map` field, e.g.
   `(1+z^2)/(1-z^2)`), drawn on the Riemann sphere: the basin depth of its
   attracting cycles, on a sphere grid, rasterised on the CPU — drag to
-  rotate, wheel to zoom. Sessions whose `map` is not a number (`Douady
-  rabbit z^2+c`) say so, and so do sessions with no map.
+  rotate, wheel to zoom. Two projections: **ball** (orthographic — what a
+  sphere looks like; circles near the limb are ellipses, which is
+  perspective, not a defect) and **conformal** (stereographic — angle
+  preserving, so circles stay circles, and the sphere is drawn minus the
+  point at the far pole, filling the panel). The screen uses one scale for
+  both axes, so the ball is round in any window shape. Sessions whose `map`
+  is not a number (`Douady rabbit z^2+c`) say so, and so do sessions with no
+  map.
 * **Energies** — the lifting bound of plan item 180 for a chosen $p$ and
   $n$. Upper bounds, exact at integral $p$, on the session's own metric;
   a value of 1 means the representative is unit-speed, not that the map is
@@ -75,4 +81,7 @@ No session editor (the data are the JSON files; plan items 80–85 remain the
 input front ends), no rational-map reconstruction (M4), and no 2D plane plot
 — the Map panel is the sphere, and the same kernel draws the plane. The
 picture is unverified visually: this machine has no display, so only its
-geometry and its depth statistics are tested.
+geometry and its depth statistics are tested — the aspect ratio (a ball in
+any window shape), the conformality of the stereographic chart (measured
+Jacobian: |du|/|dv| = 1.000000, cos = 7e-10) and the *non*-conformality of
+the orthographic one (1.209, cos = 0.19) are all asserted.

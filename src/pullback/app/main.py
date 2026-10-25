@@ -130,6 +130,14 @@ class MainWindow(QMainWindow):
 
         map_tab = QWidget()
         mv = QVBoxLayout(map_tab)
+        proj_row = QHBoxLayout()
+        proj_row.addWidget(QLabel("projection"))
+        self.proj_combo = QComboBox()
+        self.proj_combo.addItems(["ball (orthographic)", "conformal (stereographic)"])
+        self.proj_combo.currentIndexChanged.connect(self._on_projection)
+        proj_row.addWidget(self.proj_combo)
+        proj_row.addStretch(1)
+        mv.addLayout(proj_row)
         self.map_label = QLabel("no session open")
         self.map_label.setWordWrap(True)
         mv.addWidget(self.map_label)
@@ -215,6 +223,9 @@ class MainWindow(QMainWindow):
         self._fill(self.energy_table, (), ())
         self.energy_note.setText("press Compute")
         self._render_map()
+
+    def _on_projection(self, index):
+        self.sphere.set_projection("stereographic" if index == 1 else "orthographic")
 
     def _render_map(self):
         """The Map panel: the session's rational map, if it has a numeric one."""

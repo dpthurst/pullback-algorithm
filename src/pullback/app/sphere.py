@@ -33,6 +33,12 @@ class SphereView(QWidget):
         self.yaw = 0.0
         self.pitch = 0.0
         self.zoom = 1.0
+        # "orthographic": the ball, one ray per pixel, perspective
+        # foreshortening near the limb (circles there are ellipses).
+        # "stereographic": the conformal chart -- screen plane -> sphere by
+        # inverse stereographic projection, circles stay circles, the sphere
+        # is drawn minus the point at the far pole.
+        self.projection = "orthographic"
         self._last_image = None
         self._drag = None
         if counts is not None:
@@ -57,26 +63,49 @@ class SphereView(QWidget):
         return self._counts is not None
 
     # ------------------------------------------------------------ geometry
-    def _spherical(self, width, height):
-        """(theta, phi) arrays for the pixels inside the disc; None outside."""
+    def set_projection(self, name):
+        if name not in ("orthographic", "stereographic"):
+            raise ValueError(f"unknown projection {name!r}")
+        self.projection = name
+        self._last_image = None
+        self.update()
+
+    def _unit_points(self, width, height):
+        """(inside, S) with S the (3, height, width) unit vectors.
+
+        The two screen axes share ONE scale, 2/min(width, height): separate
+        scales stretched the sphere into an ellipse on a wide panel (the
+        picture was not conformal, circles off round -- author, 2026-10-25).
+        """
         ys, xs = np.mgrid[0:height, 0:width]
-        u = ((xs + 0.5) / width * 2.0 - 1.0) * self.zoom
-        v = (1.0 - (ys + 0.5) / height * 2.0) * self.zoom
+        scale = 2.0 / min(width, height)
+        u = ((xs + 0.5) - width / 2.0) * scale * self.zoom
+        v = -((ys + 0.5) - height / 2.0) * scale * self.zoom
         r2 = u * u + v * v
-        inside = r2 <= 1.0
-        w = np.sqrt(np.clip(1.0 - r2, 0.0, 1.0))
+        if self.projection == "stereographic":
+            den = 1.0 + r2
+            x, y, z = 2.0 * u / den, 2.0 * v / den, (1.0 - r2) / den
+            inside = np.ones(u.shape, dtype=bool)
+        else:
+            inside = r2 <= 1.0
+            x, y = u, v
+            z = np.sqrt(np.clip(1.0 - r2, 0.0, 1.0))
         cp, sp = np.cos(self.pitch), np.sin(self.pitch)
         cy, sy = np.cos(self.yaw), np.sin(self.yaw)
-        x1 = u
-        y1 = v * cp - w * sp
-        z1 = v * sp + w * cp
+        x1 = x
+        y1 = y * cp - z * sp
+        z1 = y * sp + z * cp
         x2 = x1 * cy + z1 * sy
         z2 = -x1 * sy + z1 * cy
         # camera frame (x right, y up, z toward viewer) -> world (x toward
         # viewer, y right, z up at yaw = pitch = 0)
-        wx, wy, wz = z2, x2, y1
-        theta = np.arccos(np.clip(wz, -1.0, 1.0))
-        phi = np.mod(np.arctan2(wy, wx), 2.0 * np.pi)
+        return inside, np.stack([z2, x2, y1])
+
+    def _spherical(self, width, height):
+        """(inside, theta, phi) for the screen pixels."""
+        inside, S = self._unit_points(width, height)
+        theta = np.arccos(np.clip(S[2], -1.0, 1.0))
+        phi = np.mod(np.arctan2(S[1], S[0]), 2.0 * np.pi)
         return inside, theta, phi
 
     def render_image(self, width=480, height=480):

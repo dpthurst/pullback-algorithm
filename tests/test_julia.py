@@ -178,6 +178,56 @@ class TestSphereView(unittest.TestCase):
         b = image_array(view.render_image(120, 120))
         self.assertGreater(int(np.count_nonzero(a != b)), 100)
 
+    def test_aspect_ratio_is_preserved(self):
+        # Regression (author, 2026-10-25): normalising x and y separately
+        # stretched the sphere into an ellipse on a wide panel.
+        view = SphereView(self.tex, maxiter=150)
+        for w, h in ((300, 180), (180, 300), (240, 240)):
+            a = image_array(view.render_image(w, h))
+            mask = np.any(a != np.array([24, 24, 28], np.uint8), axis=2)
+            ys, xs = np.nonzero(mask)
+            self.assertEqual(int(xs.max() - xs.min()), int(ys.max() - ys.min()),
+                             (w, h))
+
+    def test_the_picture_does_not_depend_on_the_window_shape(self):
+        view = SphereView(self.tex, maxiter=150)
+        wide = image_array(view.render_image(300, 180))
+        square = image_array(view.render_image(180, 180))
+        # the 180x180 centre of the wide render is the square render
+        self.assertTrue(np.array_equal(wide[:, 60:240], square))
+
+    @staticmethod
+    def _tangents(S, x, y):
+        """Screen -> sphere tangent vectors at one pixel, five-point central.
+
+        A one-pixel step with the two-point formula carries O(h^2) curvature
+        error (5e-5 in the dot product at size 201), which is the stencil,
+        not the projection.
+        """
+        du = (S[:, y, x - 2] - 8 * S[:, y, x - 1]
+              + 8 * S[:, y, x + 1] - S[:, y, x + 2]) / 12.0
+        dv = (S[:, y - 2, x] - 8 * S[:, y - 1, x]
+              + 8 * S[:, y + 1, x] - S[:, y + 2, x]) / 12.0
+        return du, dv
+
+    def test_orthographic_is_not_conformal_away_from_the_centre(self):
+        # u ~ 0.60, v ~ 0.25 (deliberately asymmetric: at u = v the ratio is
+        # 1 by symmetry, which is why the first version of this test passed
+        # vacuously).
+        view = SphereView(self.tex, maxiter=150)
+        _inside, S = view._unit_points(401, 401)
+        du, dv = self._tangents(S, 320, 150)
+        self.assertGreater(abs(float(np.linalg.norm(du) / np.linalg.norm(dv)) - 1.0), 0.01)
+
+    def test_stereographic_is_conformal(self):
+        view = SphereView(self.tex, maxiter=150)
+        view.set_projection("stereographic")
+        _inside, S = view._unit_points(401, 401)
+        du, dv = self._tangents(S, 320, 150)
+        nu, nv = float(np.linalg.norm(du)), float(np.linalg.norm(dv))
+        self.assertAlmostEqual(nu / nv, 1.0, places=6)
+        self.assertLess(abs(float(np.dot(du, dv)) / (nu * nv)), 1e-6)
+
     def test_without_texture_it_still_renders(self):
         view = SphereView()
         self.assertFalse(view.render_image(80, 80).isNull())
