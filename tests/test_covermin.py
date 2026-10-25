@@ -327,6 +327,23 @@ class TestEmbIsTheEssentialSupremum(unittest.TestCase):
         self.assertLessEqual(r["lam"], Q(6))
 
 
+class TestToleranceStop(unittest.TestCase):
+    """alg:iter's tolerance stop (used by the figure/tower drivers) leaves
+    the fixed-point value bracketed: the lambda agrees with the exact-
+    repeat run to the tolerance and the run takes fewer steps."""
+
+    def test_tol_stop_matches_exact_repeat(self):
+        for n in (1, 2):
+            r = case("theta", n, UNIT_THETA)
+            cls = r["cls"]
+            lams_exact, _e, _c, _X, _g = cm.alg_iter(cls)
+            lams_tol, _e2, _c2, _X2, _g2 = cm.alg_iter(cls, tol=Q(1, 10**12))
+            with self.subTest(n=n):
+                self.assertLessEqual(abs(lams_tol[-1] - lams_exact[-1]),
+                                     Q(1, 10**11))
+                self.assertLessEqual(len(lams_tol), len(lams_exact))
+
+
 class TestDeterminism(unittest.TestCase):
     """Nothing may depend on set iteration order (AGENTS.md A3.10): the
     harmonic output must be identical across PYTHONHASHSEED values."""

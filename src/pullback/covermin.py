@@ -683,6 +683,13 @@ def alg_iter(cls, ell0=None, steps=40, tol=None, verbose=False):
     Returns (lambdas, ell, cls, X, gaps): lambdas[i] is the multiplicative
     factor of step i (the last estimates SF[phi]); gaps is the balance
     certificate of the final harmonic map (empty = harmonic).
+
+    The iteration stops when the factor repeats exactly (the exact fixed
+    point), or -- when `tol` is given -- when it changes by at most a
+    relative `tol` (a bracketed value; the geometric convergence reaches
+    1e-12 in roughly a quarter of the default 40 steps, so a large `tol`
+    like 1e-12 is a substantial saving with the fixed point still certified
+    by the gaps).
     """
     labs = cls.tgt.labels()
     ell = {f: Q(1) for f in labs} if ell0 is None else dict(ell0)
@@ -699,6 +706,9 @@ def alg_iter(cls, ell0=None, steps=40, tol=None, verbose=False):
             break
         ell = {f: nxt[f] / s for f in labs}
         if len(out) >= 2 and out[-1] == out[-2]:
+            break
+        if (tol is not None and len(out) >= 2
+                and abs(out[-1] - out[-2]) <= tol * max(abs(out[-1]), Q(1))):
             break
     _X, gaps = cls.harmonic(ell, X)
     return out, ell, cls, X, gaps

@@ -80,10 +80,12 @@ def compute_curves(n_max):
     for label, a in (("(4,4,1)", {"p": 4.0, "q": 1.0, "r": 4.0}),
                      ("(1,1,1)", {"p": 1.0, "q": 1.0, "r": 1.0})):
         vals = {}
+        ell_prev = None          # the warm start: the previous n's fixed point
         for n in range(1, n_max + 1):
             Gn, phin, G2 = session_iterate(ROOT / "sessions" / "theta.json", n)
             alpha1 = {e: a[edge_letter(e)] for e in Gn.edges}
-            lams, _ell2, _m = alg_iter(Gn, G2, phin.chains, alpha1, dict(a))
+            lams, ell_prev, _m = alg_iter(Gn, G2, phin.chains, alpha1, dict(a),
+                                          ell0=ell_prev)
             vals[n] = lams[-1]
             print(f"  computed {label} n={n}: {lams[-1]:.9f}", flush=True)
         out[label] = vals

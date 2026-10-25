@@ -98,6 +98,25 @@ class TestCrossCheckWithExact(unittest.TestCase):
         self.assertAlmostEqual(fast, dr, places=6)
 
 
+class TestWarmStart(unittest.TestCase):
+    """alg:iter takes an initial target metric (`ell0`); the tower of
+    iterates can be chained -- the previous n's fixed-point metric starts
+    the next run -- and the answers must not change."""
+
+    def test_theta_warm_chain_matches_cold(self):
+        a = {"p": 1.0, "q": 1.0, "r": 1.0}
+        ell_prev = None
+        for n in (1, 2, 3, 4):
+            Gn, phin, G2 = session_iterate(ROOT / "sessions" / "theta.json", n)
+            alpha1 = {e: a[edge_letter(e)] for e in Gn.edges}
+            cold, _e, _m = alg_iter(Gn, G2, phin.chains, alpha1, dict(a))
+            warm, ell_prev, _m = alg_iter(Gn, G2, phin.chains, alpha1, dict(a),
+                                          ell0=ell_prev)
+            with self.subTest(n=n):
+                self.assertAlmostEqual(warm[-1], cold[-1], places=12)
+                self.assertLessEqual(len(warm), len(cold))
+
+
 class TestKnownLimitation(unittest.TestCase):
     """The fast path is not yet right for the bouquet at n >= 2: its chains
     are constant on the lifts of b, and the degenerate cases (both endpoints

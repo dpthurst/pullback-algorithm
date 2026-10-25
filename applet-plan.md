@@ -409,7 +409,14 @@ for Thurston's algorithm (150, 230).
      (0 ≤ Dir − Dir_QP ≤ 3.5e-9, |v − v_QP| ≤ 1.9e-5, Dir_id exact). Slower than fastmin
      (bouquet n = 5 in 31 s; θ n = 3..7 in 13, 215, 291, 2267, 5960 s — it matches
      the paper's 0.309249 at n = 7; n = 8 attempted and abandoned 2026-10-26, a
-     cross-check not worth the hours)
+     cross-check not worth the hours). Two speed knobs measured 2026-10-26: a
+     tolerance stop on alg:iter's factor (the exact-repeat stop never fired, so
+     every cold run burned the 40-step cap; at a relative 1e-12, θ (4,1,4) n=2,3
+     go 25.4 → 6.0 s and 67.1 → 17.9 s, the λ agreeing to ≤ 1e-12), and a warm
+     start from the previous iterate's fixed-point metric (θ (4,1,4) n=3:
+     66.9 → 14.2 s warm alone, 4.9 s warm + tol, 13.7×; but θ (1,1,1) n=5 gets
+     slower, 291 → 331 s, because that row's fixed points oscillate — chain the
+     warm start only where they vary smoothly).
      but correct everywhere; `tests/test_covermin.py` (16 tests) cross-checks it
      against the QP, the published values, the certificate and determinism.
      A database-wide iteration check (2026-10-26, all 15 sessions at n = 1..2,

@@ -411,12 +411,20 @@ def _vertices(g):
     return out
 
 
-def alg_iter(src, tgt, chains, alpha1, alpha2, steps=200, tol=1e-13, verbose=False):
-    """[Elast] alg:iter on the class given by `chains`, starting from unit
-    target lengths.  Returns (lambdas, ell2, map): lambdas[i] is the
-    multiplicative factor of step i, and the last estimates SF[phi]."""
+def alg_iter(src, tgt, chains, alpha1, alpha2, steps=200, tol=1e-13,
+             verbose=False, ell0=None):
+    """[Elast] alg:iter on the class given by `chains`, starting from the
+    target lengths `ell0` (unit when absent).
+
+    For a tower of iterates, passing the previous iterate's fixed-point
+    metric as `ell0` starts the next run at the answer's neighbour instead
+    of at the unit metric -- the same fixed point, far fewer steps.
+
+    Returns (lambdas, ell2, map): lambdas[i] is the multiplicative factor of
+    step i, and the last estimates SF[phi]."""
     m = FastMap(src, tgt, chains)
-    ell2 = {e: 1.0 for e in alpha2}
+    ell2 = {e: 1.0 for e in alpha2} if ell0 is None else \
+        {e: float(ell0[e]) for e in alpha2}
     out = []
     for i in range(steps):
         m.harmonic(alpha1, ell2)
