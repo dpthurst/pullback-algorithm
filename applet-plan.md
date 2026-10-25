@@ -390,10 +390,44 @@ for Thurston's algorithm (150, 230).
      plus the push/pull type repair — in float64, and reproduces θ at n = 1..8 to ~1e-7
      (0.864357 … 0.178296 and 1.5 … 0.227530). The exact engine remains the certificate
      path at n <= 3.
+     **The convex formulation (2026-10-26).** The fast path's bouquet failure is structural
+     — its type search has barriers (a vertex inside one target edge cannot move into a
+     neighbouring one without passing through their common vertex, where Dir is higher) —
+     so `src/pullback/covermin.py` lifts the energy to the universal cover of the target,
+     where F(x) = Σ_e d_T(x_u, τ_e x_v)²/α₁(e) is convex (the author's "the convexity of
+     the problem seems key"): no type is searched, the minimiser is unique up to the global
+     deck translation, and no cover is built (a lifted point is a reduced word plus an
+     offset; all arithmetic exact `Fraction`). The harmonic step is coordinate descent with
+     an exact rational block minimiser (`minimise_one`: the Steiner tree of the landing
+     points, covered by the atomic segments of the pairwise geodesics, a convex quadratic
+     per segment), and the run carries its own certificate — the directional tension gaps,
+     all ≤ 0 at the optimum, which is the balance condition of harmonic.tex
+     cor:harmonic-triangle. Verified: the bouquet 1, 3/4, 5/8, 23/48, 187/480 at n = 1..5
+     and θ (1,1,1) 3/2, 0.773459, 6/7 at n = 1..3 (|λ − value| ≤ 5.1e-17; exact at
+     bouquet n = 1,3 and θ n = 1), θ (4,1,4) n = 1 = 0.864356777 (the paper's); the
+     harmonic step agrees with the exact QP at unit lengths over six cases
+     (0 ≤ Dir − Dir_QP ≤ 3.5e-9, |v − v_QP| ≤ 1.9e-5, Dir_id exact). Slower than fastmin
+     (bouquet n = 5 in 31 s; θ n = 3..7 in 13, 215, 291, 2267, 5960 s; n = 8 pending)
+     but correct everywhere; `tests/test_covermin.py` (16 tests) cross-checks it
+     against the QP, the published values, the certificate and determinism.
+     A database-wide iteration check (2026-10-26, all 15 sessions at n = 1..2,
+     12 steps, comparison-free invariants: certificate, Dir(harmonic) ≤
+     Dir(input), v ≥ 0, DR ≤ explicit bound, DR monotonicity up to 1e-6, and
+     Emb(input) vs the matrix power) passes 23 of 30 runs (one of them, barbell
+     n = 2, with a recorded note: the G_n enumeration undercounts there, the
+     known recorded corner; the two agree at n = 1 on every session), with 6
+     documented skips (census-3.2 fails in `session_iterate` exactly as the
+     exact engine; census-53's irrational elastics are outside the
+     exact-rational engine; the twisted sessions' G_2 is disconnected at
+     n = 2) and 1 documented exception (twisted-z2i's DR decrease — the
+     descent stalls at a start-dependent balanced point, the free class has
+     several). It caught one real bug: `emb`
+     returned the multiplicity dict instead of the scalar essential supremum —
+     fixed with a regression test.
      **Not implemented:** the escape procedure of Algorithm 6.49 (unnecessary
-     on every test case so far, including the paper's boundary example); the
-     fast path's degenerate cases (the bouquet at n >= 2 is wrong there: constant
-     chains; recorded as a skipped test).
+     on every test case so far, including the paper's boundary example). The
+     fast path's bouquet wrongness (n ≥ 2) is fixed by covermin, not by fastmin —
+     fastmin keeps its recorded limitation (a skipped test) and stays the fast path.
      The session schema now carries `marked` (base vertices whose lifts are
      pinned; empty = the free class, the sessions' convention) and reserves
      `orbifold` (cone points, orbigraphs — independent of `marked`, so a
