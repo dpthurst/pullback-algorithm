@@ -4,5 +4,7 @@
   "cover": "a01",
   "phi": "b0Bab c0BAbab a0c",
   "note": "TWISTED rabbit as a topological map hR (h fixing P): the dynamics ON P is that of the rabbit, so every cycle of P must contain a branch point -- and it does: hyperbolic type. The first two tokens are the rabbit's b0, c0 conjugated by ab, exactly as the Harmonic text says; the third is the rabbit's own a0c.  THE AUTHOR CONFIRMED 2026-10-25 that this is the actual twisted rabbit.  The Harmonic import had 'b1c' there, which drops a0 -> c and adds b1 -> c; that string is now the session twisted-z2i.",
+  "marked": [],
+  "orbifold": [],
   "name": "twisted-rabbit"
 }

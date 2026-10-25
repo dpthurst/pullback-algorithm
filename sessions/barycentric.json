@@ -5,5 +5,7 @@
   "cover": "rabc|def qad|bf|ce",
   "phi": "qaq qfQ qbr qeR qcp qdP",
   "expected_from_confdim": "E^2_2[phi^2] = 10/13",
+  "marked": [],
+  "orbifold": [],
   "name": "barycentric"
 }

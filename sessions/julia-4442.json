@@ -12,5 +12,7 @@
   ],
   "elastics_order": "p q r s",
   "note": "Julia set is the whole sphere (post-critically finite with no critical periodic cycles); hyperbolic orbifold (4,4,4,2).  The MAIN THEOREM OF [PChar] does not apply to this example.  THE AUTHOR HAS NOT CHECKED THIS EXAMPLE CAREFULLY \u2014 treat the data as unverified until the engine's checks pass.  CHECKED 2026-10-25 AND IT FAILS: the shipped phi collapses all six cover faces (face_map_phi: 6 collapsed, 0 essential), so it is not a ribbon map and type_classification refuses it ('base face 0 has 0 marked cover faces'). The string is verbatim from Harmonic Julia.lhs line 80, so this is inherited, not a transcription slip; no rotation of the two flowers and no choice of the monodromy edge rescues it (searched: all dihedral variants at a and b crossed with q01/p01/r01/s01, never more than 0 essential faces).  The covering portrait is consistent with (2z^2-4)/z^2: degrees [2,1,1,2,1,1], the two critical values.  A corrected phi is needed.  Author's prediction (2026-10-25): the corrected data has no branched cycles \u2014 the postcritical dynamics is inf ->(2) 2 -> 1 <-> -2, and no critical point lies on the 1 <-> -2 cycle.  Old-code targets (M3): EL_v/EL_h converges toward 1.637 = (1.279)^2 from the Schwarz-Christoffel rectangle on S^2-{inf,-2,1,2}; old starting weights (2,1,2,1) on p,q,r,s, ratio table in Julia.lhs.",
+  "marked": [],
+  "orbifold": [],
   "name": "julia-4442"
 }

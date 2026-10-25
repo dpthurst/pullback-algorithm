@@ -20,6 +20,23 @@ from pullback.ribbons import fmt_dart
 
 # Transcribed from Examples.lhs (section names noted).  Extra data
 # (elastic weights) recorded for M3.
+#
+# Session schema (the fields `main` writes into every session):
+#   graph, cover, phi   the Harmonic-format strings (the data model)
+#   marked              vertices of the BASE graph whose lifts are pinned:
+#                       a marked vertex v requires every lift of v in the
+#                       cover to map to v.  Empty = the FREE homotopy class,
+#                       which is the sessions' convention (the published
+#                       bouquet values 3/4, 5/8, ... < 1 force it: with every
+#                       source vertex pinned, Emb >= 1).  The paper's examples
+#                       are marked classes instead (tests, not sessions).
+#   orbifold            RESERVED for orbigraphs (not used yet): a list of
+#                       {"vertex": v, "order": n} cone points, n >= 2.
+#                       Independent of `marked` -- a graph may carry both
+#                       marked points and orbifold points.  Empty = a plain
+#                       graph.  Nothing reads this field yet; it is accepted
+#                       by validation so it can be populated without a schema
+#                       migration.
 EXAMPLES = {
     "theta": {
         "source": "Harmonic Examples.lhs 'Double theta to theta'; [PChar] Fig. 3",
@@ -181,6 +198,8 @@ def main():
                          "lengths", "elastics_tuned", "elastics_order", "note",
                          "punctures", "category",
                          "expected_from_output_tex", "expected_from_confdim")}
+        sess["marked"] = list(ex.get("marked", []))
+        sess["orbifold"] = list(ex.get("orbifold", []))
         sess["name"] = name
         (outdir / f"{name}.json").write_text(json.dumps(sess, indent=2) + "\n")
 

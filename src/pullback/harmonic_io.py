@@ -69,12 +69,45 @@ def _sheet_key(s):
     return int(s) if s.isdigit() else s
 
 
+# Session fields beyond the data model (graph/cover/phi), with their meaning
+# for M3.  `marked` and `orbifold` are independent: a graph may carry both.
+#   marked:   base vertices whose lifts are pinned (empty = free class)
+#   orbifold: RESERVED, not read yet -- [{"vertex": v, "order": n}] cone points
+SESSION_FIELDS = {
+    "marked": "list of base vertex names whose lifts are pinned (homotopy class)",
+    "orbifold": "reserved: list of {vertex, order} cone points (orbigraphs)",
+}
+
+
+def check_session_fields(sess):
+    """Validate the non-data session fields.  Raises ValueError on a
+    malformed `marked` or `orbifold`; unknown fields are ignored (they are
+    documentation, e.g. `expected_from_output_tex`)."""
+    marked = sess.get("marked", [])
+    if not isinstance(marked, list) or not all(isinstance(v, str) for v in marked):
+        raise ValueError("session field 'marked' must be a list of vertex names")
+    orb = sess.get("orbifold", [])
+    if not isinstance(orb, list):
+        raise ValueError("session field 'orbifold' must be a list")
+    for cp in orb:
+        if (not isinstance(cp, dict) or "vertex" not in cp or "order" not in cp
+                or not isinstance(cp["order"], int) or cp["order"] < 2):
+            raise ValueError("orbifold cone points must be {vertex, order} with "
+                             "integer order >= 2, got %r" % (cp,))
+    return sess
+
+
 def load_session(path):
     """Load a JSON session: keys graph, cover, phi (Harmonic-format
     strings).  Returns (base, cover, phi)."""
     with open(path) as f:
         sess = json.load(f)
+    check_session_fields(sess)
     base = parse_graph(sess["graph"])
     cover, _sheets = parse_cover(base, sess["cover"])
     phi = parse_cmap(cover, base, sess["phi"])
+    marked = sess.get("marked", [])
+    bad = [v for v in marked if v not in base.vertices()]
+    if bad:
+        raise ValueError(f"marked vertices {bad} are not vertices of the base graph")
     return base, cover, phi

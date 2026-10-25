@@ -9,16 +9,16 @@ rendered as bold bullets so that source and rendered numbers agree; the labels
 Sources used, all in `.scratch/`:
 [PChar] D. Thurston, *A positive characterization of rational maps*,
 Ann. of Math. **192** (2020) 1–46 (arXiv:1612.04424; LaTeX source + MetaPost
-figure code extracted to `.scratch/poschar/`);
+figure code extracted to `refs/poschar/`);
 [Elast] D. Thurston, *Elastic Graphs*, Forum of Math. Sigma **7** (2019) e24
-(arXiv:1607.00340; source in `.scratch/elastic/`);
+(arXiv:1607.00340; source in `refs/elastic/`);
 [Rubber] *From rubber bands to rational maps: a research report*,
-Res. Math. Sci. **3**:15 (2016) (arXiv:1502.02561; `.scratch/rubber/`);
+Res. Math. Sci. **3**:15 (2016) (arXiv:1502.02561; `refs/rubber/`);
 [KPT] Kahn–Pilgrim–Thurston, *Conformal surface embeddings and extremal
 length* (arXiv:1507.05294);
 [ConfDim] K. Pilgrim & D. Thurston, *Ahlfors-regular conformal dimension and
 energies of graph maps*, Groups Geom. Dyn. **20** (2026) 971–1050
-(arXiv:2112.09041; source in `.scratch/confdim-src/`);
+(arXiv:2112.09041; source in `refs/confdim-src/`);
 [Harmonic] the author's old literate-Haskell code,
 github.com/dpthurst/Harmonic (cloned to `.scratch/Harmonic/`): machine-readable
 example data (`Examples.lhs`), computed stretch-factor tables (`output.tex`),
@@ -119,7 +119,7 @@ for Thurston's algorithm (150, 230).
     for the ribbon-map check), the barycentric subdivision map and census #3.2
     of [PChar, §1.2] (Sierpiński carpet, n > 1 needed), z²+i as the
     non-hyperbolic warning case, the elastic example with weights (1, √2, 2)
-    whose figure code is in `.scratch/poschar/draws/graphs.mp`, and
+    whose figure code is in `refs/poschar/draws/graphs.mp`, and
     [Elast, Ex. 1.17] (two tripods with elastic constants (1,3,3) and (1,1,1),
     where Emb = 3/5 and the minimiser is *not* the harmonic map — a
     hand-checkable value).
@@ -131,7 +131,7 @@ for Thurston's algorithm (150, 230).
     (flowers give the ribbon structure; unlisted edges map to constant paths).
     More carpet examples from [ConfDim]: the barycentric carpet (exact fixture
     E²₂[φ²] = 10/13), the fat and skinny Devaney families (spines in
-    `.scratch/confdim-src/draws/`, with the ŌN ≥ r_n matrix test), the
+    `refs/confdim-src/draws/`, with the ŌN ≥ r_n matrix test), the
     Milnor–Tan quadratic carpet, and a quartic non-carpet (ŌN = √2) as a
     negative test.
 
@@ -369,6 +369,28 @@ for Thurston's algorithm (150, 230).
      ᴱE^p_p ≤ (max_l (Mⁿ1)_l)^{1/(pn)} → ρ(M)^{1/p}. For p = 2 this is a cheap
      *upper* bound on Emb[φⁿ] that the [Elast, §6] minimiser must come in at or
      below — an acceptance check for Algorithm *iter*, not a substitute for it.
+     *Status (2026-10-25).* **Implemented and exact.** `src/pullback/refined.py`
+     (marked elastic graphs, PL maps, the refined constant-derivative piece
+     model of lipschitz.tex def:const-deriv, the class certificate),
+     `src/pullback/minimise.py` (alg:iter with the harmonic step as an exact
+     rational QP over the relaxed polytope of harmonic.tex def:relaxed — the
+     max-flow/min-cut side of taut.tex thm:maxflow-mincut — and an exact
+     fixed-point eigen-solve verified against the real iteration),
+     `src/pullback/certificates.py` (the SF_EL lower bounds of eq:sf-el),
+     `src/pullback/iterate_graphs.py` (the explicit G_n).  Verified exact:
+     [Elast] Ex. 1.17 Emb = 3/5; examp:partial-filling Emb = 2 (boundary fixed
+     point, no λ-filling map — the value comes from the two-sided bracket,
+     not the escape); the barbell Emb[φ¹] = 5 < 6 (the explicit bound is not
+     sharp); the bouquet Emb[fⁿ] = 1, 3/4, 5/8, 23/48 at n = 1..4, matching
+     the published Harmonic values exactly from the fixed point alone.
+     **Not implemented:** the escape procedure of Algorithm 6.49 (unnecessary
+     on every test case so far, including the paper's boundary example);
+     the minimiser at n = 5 (the simple-cycle enumeration of G_5 is past
+     practical reach — the dual search gives the bound there instead).
+     The session schema now carries `marked` (base vertices whose lifts are
+     pinned; empty = the free class, the sessions' convention) and reserves
+     `orbifold` (cone points, orbigraphs — independent of `marked`, so a
+     graph may carry both); nothing reads cone points yet.
 - **180.** **Independent lower and upper bounds** (always available, no convergence
      question):
      - upper: Emb(ψ) for any explicit ψ ∈ [φ] (compute a good ψ by iterating

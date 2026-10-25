@@ -2,7 +2,7 @@
 
 2026-10-23. Requested by the author before work starts on the applet.
 Source reviewed: `taut.tex` of arXiv:1607.00340 (local copy in
-`.scratch/elastic/`), i.e. §3 of *Elastic Graphs*, Forum of Math. Sigma **7**
+`refs/elastic/`), i.e. §3 of *Elastic Graphs*, Forum of Math. Sigma **7**
 (2019) e24.
 
 **What the section proves.** Reduced and taut maps exist in every homotopy

@@ -5,5 +5,7 @@
   "phi": "q1r r1s s1q q0p r0p",
   "category": "group",
   "note": "The GRIGORCHUK group example: a group-theoretic illustration (amenable, intermediate growth) with NO natural ribbon structure.  The ribbon boundary pattern failing is expected and is not a defect; group-level checks only.",
+  "marked": [],
+  "orbifold": [],
   "name": "grigorchuk"
 }
