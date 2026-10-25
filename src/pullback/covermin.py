@@ -633,9 +633,12 @@ class Cls:
         return X, gaps_out
 
     # -- algorithm 6.22 -------------------------------------------------
-    def dr(self, ell, X=None):
-        """(Dir, Dir_id, DR, v, X) at target lengths ell."""
-        X, gaps = self.harmonic(ell, X)
+    def dr(self, ell, X=None, tol=Q(1, 10 ** 9)):
+        """(Dir, Dir_id, DR, v, X) at target lengths ell.
+
+        `tol` is the descent's stopping tolerance (see `harmonic`); alg:iter
+        passes a looseness that decays towards it in the early steps."""
+        X, gaps = self.harmonic(ell, X, tol=tol)
         Dir = self.energy(X, ell)
         Dir_id = sum((ell[f] ** 2 / self.alpha2[f] for f in self.tgt.labels()), Q(0))
         v = self.fill(X, ell)
@@ -677,7 +680,8 @@ def _snap_point(x, max_den=10 ** 7):
 
 
 # ------------------------------------------------------------- alg:iter
-def alg_iter(cls, ell0=None, steps=40, tol=None, verbose=False):
+def alg_iter(cls, ell0=None, steps=40, tol=None, htol_loose=None,
+             verbose=False):
     """[Elast] alg:iter (filling.tex:522) on the class `cls`, exactly.
 
     Returns (lambdas, ell, cls, X, gaps): lambdas[i] is the multiplicative
@@ -690,13 +694,22 @@ def alg_iter(cls, ell0=None, steps=40, tol=None, verbose=False):
     1e-12 in roughly a quarter of the default 40 steps, so a large `tol`
     like 1e-12 is a substantial saving with the fixed point still certified
     by the gaps).
+
+    `htol_loose` gives the early steps' harmonic descents a loose stopping
+    tolerance, decaying geometrically (a factor 10 per step) to the default
+    Q(1,10**9); the early steps only need to get the metric roughly right,
+    and the final steps -- which produce the reported factor -- keep the
+    tight descent.  The final certificate call is always tight.
     """
     labs = cls.tgt.labels()
     ell = {f: Q(1) for f in labs} if ell0 is None else dict(ell0)
     X = None
     out = []
+    base_tol = Q(1, 10 ** 9)
     for i in range(steps):
-        Dir, Dir_id, ratio, v, X = cls.dr(ell, X)
+        ht = base_tol if htol_loose is None else max(
+            base_tol, htol_loose * Q(1, 10) ** (-i))
+        Dir, Dir_id, ratio, v, X = cls.dr(ell, X, tol=ht)
         out.append(ratio)
         if verbose:
             print(f"  iter {i}: DR = {ratio} = {float(ratio):.9f}")

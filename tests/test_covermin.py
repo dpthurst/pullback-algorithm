@@ -344,6 +344,18 @@ class TestToleranceStop(unittest.TestCase):
                 self.assertLessEqual(len(lams_tol), len(lams_exact))
 
 
+class TestLooseDescentSchedule(unittest.TestCase):
+    """`htol_loose` gives the early harmonic descents a loose tolerance
+    decaying to the default; the reported factor must not change beyond
+    the descent tolerance (it is off by default)."""
+
+    def test_loose_schedule_same_factor(self):
+        r = case("theta", 1, UNIT_THETA)
+        lams_exact, *_ = cm.alg_iter(r["cls"])
+        lams_loose, *_ = cm.alg_iter(r["cls"], htol_loose=Q(1, 10 ** 3))
+        self.assertLessEqual(abs(lams_loose[-1] - lams_exact[-1]), Q(1, 10 ** 8))
+
+
 class TestDeterminism(unittest.TestCase):
     """Nothing may depend on set iteration order (AGENTS.md A3.10): the
     harmonic output must be identical across PYTHONHASHSEED values."""

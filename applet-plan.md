@@ -416,7 +416,12 @@ for Thurston's algorithm (150, 230).
      start from the previous iterate's fixed-point metric (θ (4,1,4) n=3:
      66.9 → 14.2 s warm alone, 4.9 s warm + tol, 13.7×; but θ (1,1,1) n=5 gets
      slower, 291 → 331 s, because that row's fixed points oscillate — chain the
-     warm start only where they vary smoothly).
+     warm start only where they vary smoothly). A third knob, a diminishing-
+     precision schedule for the early harmonic descents (`htol_loose`), is in the
+     code but off: measured, it does not help reliably (the jitter delays the
+     tolerance stop). The database-wide iteration check is now `tests/test_database.py`
+     (every session at n = 1, the comparison-free invariants, the two documented
+     failures pinned).
      but correct everywhere; `tests/test_covermin.py` (16 tests) cross-checks it
      against the QP, the published values, the certificate and determinism.
      A database-wide iteration check (2026-10-26, all 15 sessions at n = 1..2,
