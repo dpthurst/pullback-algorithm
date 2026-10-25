@@ -727,7 +727,12 @@ All settled 2026-10-23 (original numbering preserved):
 
 D1 — Python for the initial implementation; a standalone Python app is
 slightly more convenient; strict model/view separation so the view can be
-ported later (250, 260).
+ported later (250, 260). **Reconfirmed and widened by the author 2026-10-26:**
+the first deliverable is the standalone **desktop** app ("applet" means that,
+not the browser page), and the project is to be used for **scripting** as
+well as display, so the engine's public surface is a deliverable in its own
+right. Model/view separation unchanged; the browser page stays the optional
+later port of the view.
 D2 — a separate repository, `dpthurst/pullback-algorithm`; its page deploys
 to that repository's Pages only on the author's word.
 D3 — the text-based session is the source of truth; text → graphical views
