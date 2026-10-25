@@ -12,7 +12,7 @@ or, without make:
 
     PYTHONPATH=src python3 -m pullback.app [sessions/theta.json]
 
-Four panels, over the fifteen sessions in `sessions/` or any session file
+Five panels, over the fifteen sessions in `sessions/` or any session file
 you open:
 
 * **Summary** — the data (spine, cover, φ), the plan-100 checks, and the
@@ -27,6 +27,11 @@ you open:
   section-word shortcut is exact — it need not be, and then the panel says
   so), the π₁-nucleus, the level-n class counts, and the level-n group
   orders.
+* **Map** — the session's rational map (its `map` field, e.g.
+  `(1+z^2)/(1-z^2)`), drawn on the Riemann sphere: the basin depth of its
+  attracting cycles, on a sphere grid, rasterised on the CPU — drag to
+  rotate, wheel to zoom. Sessions whose `map` is not a number (`Douady
+  rabbit z^2+c`) say so, and so do sessions with no map.
 * **Energies** — the lifting bound of plan item 180 for a chosen $p$ and
   $n$. Upper bounds, exact at integral $p$, on the session's own metric;
   a value of 1 means the representative is unit-speed, not that the map is
@@ -55,7 +60,7 @@ raises there (the app catches it and shows the message).
 
 ## Verify it
 
-    make check-applet     # the headless check: 10 tests
+    make check-applet     # the headless check: 15 tests
 
 Qt runs with `QT_QPA_PLATFORM=offscreen`, so the real window is built, the
 θ session opened, and every panel compared with published or FR-verified
@@ -67,4 +72,7 @@ the layout looks right. The first visual check is you opening it.
 ## Not in this version
 
 No session editor (the data are the JSON files; plan items 80–85 remain the
-input front ends), no rational-map reconstruction (M4), no plots.
+input front ends), no rational-map reconstruction (M4), and no 2D plane plot
+— the Map panel is the sphere, and the same kernel draws the plane. The
+picture is unverified visually: this machine has no display, so only its
+geometry and its depth statistics are tested.

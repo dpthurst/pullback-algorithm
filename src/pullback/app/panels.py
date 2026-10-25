@@ -120,3 +120,18 @@ def energies(session, p=2, n=1):
             "[Elast] §6 minimisation, so a value of 1 is unit-speed, not a "
             "certificate.")
     return headers, body, note
+
+def map_picture(session, n_theta=96, n_phi=192, maxiter=200):
+    """(label, counts or None) for the Map panel: the session's rational map
+    as a basin-depth texture on the sphere."""
+    text = (session.raw or {}).get("map")
+    if not text:
+        return "this session carries no map", None
+    from ..julia import parse_map, sphere_texture
+    try:
+        num, den = parse_map(text)
+        counts = sphere_texture(num, den, n_theta, n_phi, maxiter=maxiter)
+    except Exception as exc:                                # noqa: BLE001
+        return f"{text}   --   {exc}", None
+    return (f"{text}   (basin-depth texture {n_theta} x {n_phi}, up to "
+            f"{maxiter} steps; drag to rotate, wheel to zoom)", counts)

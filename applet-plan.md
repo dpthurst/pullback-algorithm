@@ -591,6 +591,12 @@ for Thurston's algorithm (150, 230).
      engine: it mirrors the engine's arithmetic in JS only for the parts that
      must be live, with the same cross-check arrangement the core-entropy repo
      already uses for Python vs JS (370), from M5 on.
+- **Viewing numerical maps (author, 2026-10-25).** The app will hold non-combinatorial
+     objects as well: actual numerical rational maps, with a viewer — the Julia set, and
+     eventually a 3D view of the Julia set on the Riemann sphere. A ray tracer is overkill.
+     Built first: the sphere view in the app's Map panel (`pullback/julia.py`,
+     `app/sphere.py`), CPU-rasterised, because this environment has neither Qt3D nor a
+     usable OpenGL context under the offscreen platform, so a GL view could not be verified.
 - **270.** **Headless checks**: node v20 is available at ~/node/bin/node (jsdom is
      not installed globally; the core-entropy project's harnesses in its `.scratch/js` show the
      pattern — install what is needed into a git-excluded folder). Plus

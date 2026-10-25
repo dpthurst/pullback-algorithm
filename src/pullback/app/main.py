@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
 
 from ..session import Session
 from . import panels
+from .sphere import SphereView
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -69,7 +70,12 @@ class MainWindow(QMainWindow):
         left = QVBoxLayout()
         left.addWidget(QLabel("Session library"))
         self.session_list = QListWidget()
-        self.session_list.currentTextChanged.connect(self._on_pick)
+        # itemClicked / itemActivated, NOT currentTextChanged: a list that
+        # selects its first row when shown would otherwise replace the
+        # session just opened (found 2026-10-25: an opened theta became
+        # barbell on show(), which also blanked the Map panel).
+        self.session_list.itemClicked.connect(self._on_item)
+        self.session_list.itemActivated.connect(self._on_item)
         left.addWidget(self.session_list, 1)
         self.open_button = QPushButton("Open session…")
         self.open_button.clicked.connect(self._on_open)
@@ -122,6 +128,15 @@ class MainWindow(QMainWindow):
         ev.addWidget(self.energy_note)
         self.tabs.addTab(energy_tab, "Energies")
 
+        map_tab = QWidget()
+        mv = QVBoxLayout(map_tab)
+        self.map_label = QLabel("no session open")
+        self.map_label.setWordWrap(True)
+        mv.addWidget(self.map_label)
+        self.sphere = SphereView()
+        mv.addWidget(self.sphere, 1)
+        self.tabs.addTab(map_tab, "Map")
+
     def _table(self):
         table = QTableWidget()
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -149,8 +164,8 @@ class MainWindow(QMainWindow):
         self.session_list.blockSignals(False)
 
     # -------------------------------------------------------------- actions
-    def _on_pick(self, name):
-        path = self._paths.get(name)
+    def _on_item(self, item):
+        path = self._paths.get(item.text())
         if path is not None:
             self.open_session(path)
 
@@ -179,6 +194,12 @@ class MainWindow(QMainWindow):
             return False
         self.session = session
         self._render()
+        for i in range(self.session_list.count()):
+            if self.session_list.item(i).text() == Path(path).stem:
+                self.session_list.blockSignals(True)
+                self.session_list.setCurrentRow(i)
+                self.session_list.blockSignals(False)
+                break
         self.statusBar().showMessage(f"opened {path}")
         return True
 
@@ -193,6 +214,16 @@ class MainWindow(QMainWindow):
         self.automaton_view.setPlainText(self._safe(panels.automaton))
         self._fill(self.energy_table, (), ())
         self.energy_note.setText("press Compute")
+        self._render_map()
+
+    def _render_map(self):
+        """The Map panel: the session's rational map, if it has a numeric one."""
+        label, counts = panels.map_picture(self.session)
+        self.map_label.setText(label)
+        if counts is None:
+            self.sphere.clear()
+        else:
+            self.sphere.set_texture(counts, maxiter=200)
 
     def _safe(self, fn):
         try:

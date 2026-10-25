@@ -65,6 +65,21 @@ class TestPanels(unittest.TestCase):
         self.assertIn("stops at 81 points", text)
         self.assertEqual(s.level_order(3), 1028294561267712)
 
+    def test_map_picture(self):
+        # theta's map has one attracting cycle (through infinity), so every
+        # grid point settles; the picture is the depth, and it must have
+        # structure rather than be a single block.
+        label, counts = panels.map_picture(self.s)
+        self.assertIn("(1+z^2)/(1-z^2)", label)
+        self.assertEqual(counts.shape, (96, 192))
+        self.assertGreater(len(set(counts.ravel().tolist())), 10)
+
+    def test_map_picture_refuses_a_non_numeric_map(self):
+        s = Session.load(ROOT / "sessions" / "rabbit.json")
+        label, counts = panels.map_picture(s)
+        self.assertIsNone(counts)
+        self.assertIn("not a rational function", label)
+
     def test_energies(self):
         headers, rows, note = panels.energies(self.s, p=2, n=1)
         self.assertEqual(len(rows), 1)
@@ -90,13 +105,25 @@ class TestWindow(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         self.assertEqual(sorted(r[3] for r in rows), ["1", "1", "2", "2"])
         self.assertIn("5 words, closed", w.automaton_text())
-        self.assertEqual(w.tabs.count(), 4)
+        self.assertEqual(w.tabs.count(), 5)
 
     def test_energy_button_runs_the_engine(self):
         w = MainWindow()
         w.open_session(THETA)
         w.run_button.click()                      # p = 2, n = 1
         self.assertEqual(w.energy_rows(), [["1", "1", "1"]])
+
+    def test_showing_the_window_keeps_the_open_session(self):
+        # Regression: a QListWidget selects its first row when shown, and
+        # the window used to open that row's session over the opened one.
+        w = MainWindow()
+        w.open_session(THETA)
+        w.show()
+        self.app.processEvents()
+        self.assertEqual(w.session.name, "theta")
+        self.assertTrue(w.sphere.has_texture())
+        self.assertEqual(w.session_list.currentItem().text(), "theta")
+        w.close()
 
     def test_bad_file_is_reported_not_raised(self):
         scratch = ROOT / ".scratch" / "app-test"
@@ -111,6 +138,20 @@ class TestWindow(unittest.TestCase):
             self.assertIsNone(w.session)
         finally:
             bad.unlink()
+
+    def test_map_tab_shows_the_sphere(self):
+        w = MainWindow()
+        w.open_session(THETA)
+        self.assertTrue(w.sphere.has_texture())
+        self.assertIn("(1+z^2)/(1-z^2)", w.map_label.text())
+        self.assertFalse(w.sphere.render_image(120, 120).isNull())
+
+    def test_map_tab_clears_for_a_session_without_a_map(self):
+        w = MainWindow()
+        w.open_session(THETA)
+        w.open_session(ROOT / "sessions" / "barbell.json")
+        self.assertFalse(w.sphere.has_texture())
+        self.assertIn("no map", w.map_label.text())
 
     def test_refusal_is_shown_and_the_rest_still_renders(self):
         # grigorchuk has no ribbon presentation: the type is refused, but
