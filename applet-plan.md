@@ -409,8 +409,8 @@ for Thurston's algorithm (150, 230).
      (0 ≤ Dir − Dir_QP ≤ 3.5e-9, |v − v_QP| ≤ 1.9e-5, Dir_id exact). Slower than fastmin
      (bouquet n = 5 in 31 s; θ n = 3..7 in 13, 215, 291, 2267, 5960 s — it matches
      the paper's 0.309249 at n = 7; n = 8 attempted and abandoned 2026-10-26, a
-     cross-check not worth the hours). Two speed knobs measured 2026-10-26: a
-     tolerance stop on alg:iter's factor (the exact-repeat stop never fired, so
+     cross-check not worth the hours) but correct everywhere; two speed knobs measured
+     2026-10-26: a tolerance stop on alg:iter's factor (the exact-repeat stop never fired, so
      every cold run burned the 40-step cap; at a relative 1e-12, θ (4,1,4) n=2,3
      go 25.4 → 6.0 s and 67.1 → 17.9 s, the λ agreeing to ≤ 1e-12), and a warm
      start from the previous iterate's fixed-point metric (θ (4,1,4) n=3:
@@ -419,10 +419,7 @@ for Thurston's algorithm (150, 230).
      warm start only where they vary smoothly). A third knob, a diminishing-
      precision schedule for the early harmonic descents (`htol_loose`), is in the
      code but off: measured, it does not help reliably (the jitter delays the
-     tolerance stop). The database-wide iteration check is now `tests/test_database.py`
-     (every session at n = 1, the comparison-free invariants, the two documented
-     failures pinned).
-     but correct everywhere; `tests/test_covermin.py` (16 tests) cross-checks it
+     tolerance stop). `tests/test_covermin.py` (16 tests) cross-checks it
      against the QP, the published values, the certificate and determinism.
      A database-wide iteration check (2026-10-26, all 15 sessions at n = 1..2,
      12 steps, comparison-free invariants: certificate, Dir(harmonic) ≤
@@ -435,7 +432,11 @@ for Thurston's algorithm (150, 230).
      exact-rational engine; the twisted sessions' G_2 is disconnected at
      n = 2) and 1 documented exception (twisted-z2i's DR decrease — the
      descent stalls at a start-dependent balanced point, the free class has
-     several). It caught one real bug: `emb`
+     several). `make check` keeps the n = 1 slice (`tests/test_database.py`);
+     the fuller n = 1..2 sweep is the tracked `scripts/db_iteration_check.py`,
+     run on demand with `make dbcheck` (and deliberately not part of `check`),
+     which whitelists that one exception and exits 0 while still printing it.
+     It caught one real bug: `emb`
      returned the multiplicity dict instead of the scalar essential supremum —
      fixed with a regression test.
      **Not implemented:** the escape procedure of Algorithm 6.49 (unnecessary
