@@ -723,6 +723,14 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      not as data. So either hand-encode n = 1 from the figure and let the engine's own checks
      (ribbon boundary pattern, π₁, portrait) validate it, or do it properly through the deferred
      importer (80-85), which takes (f, P, spine) and tracks f⁻¹(G₀).
+     *Scope for now (author, 2026-10-25).* Work with the |P| = 4 cases, even though discrete
+     uniformisation is overkill there: Teich is one complex dimension, so the state of the
+     iteration is a cross-ratio and the seven |P| = 4 sessions are the test bed. When a larger
+     |P| is wanted the author will hand-encode a Devaney case himself — he drew those figures and
+     knows their semantics — so the importer of 80–85 is off the critical path for M4. First
+     piece built: `src/pullback/moduli.py`, the four-point chart (cross-ratio with the infinite
+     entries taken as limits, Möbius invariance, the six-value orbit, "same configuration"),
+     tested in `tests/test_moduli.py`.
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one
