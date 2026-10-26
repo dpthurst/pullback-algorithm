@@ -739,6 +739,15 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      pullback iteration has to recover. Vertex count of the pullback mesh (author's correction): the
      distinct preimages are **six**, not d|P| = 8; the two critical values contribute one preimage
      each, of multiplicity two, and the session's six cover faces say the same.
+     *First real test of the procedure (author, 2026-10-25): identify the twisted-rabbit session's
+     map.* … The twisted-rabbit session carries four postcritical points and simple critical points,
+     so it is a NET map and any rational map equivalent to it is one of the three period-3 centres —
+     rabbit, corabbit, airplane — all roots of c³ + 2c² + c + 1, whose postcritical moduli are
+     computed in `thurston.py` and are pairwise distinguishable (rabbit 0.87744 + 0.74486i,
+     corabbit its conjugate, airplane 2.32472 real). Running the pullback and reading off which
+     modulus the iteration converges to therefore *answers* the question, and the answer is
+     independently checkable against BLMW's 4-adic law (`refs/blmw/`) and the NET census. That is
+     the acceptance test for M4's first stage.
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one

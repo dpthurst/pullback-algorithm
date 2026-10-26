@@ -87,3 +87,35 @@ def modulus(points):
     pts = sorted(points, key=_order_key)
     as_complex = [complex(np.inf) if not mp.isfinite(p) else complex(p) for p in pts]
     return cross_ratio(*as_complex)
+
+def period_three_centres():
+    """The three period-3 superattracting centres: rabbit, corabbit, airplane.
+
+    All three are roots of c^3 + 2c^2 + c + 1 = 0 (the same cubic that defines
+    the rabbit parameter): each has a critical orbit of period 3 through 0.
+    Returned as (name, c) sorted by argument, so the names are stable:
+    rabbit and corabbit are the conjugate pair with Im != 0, the airplane the
+    real one.
+    """
+    roots = mp.polyroots([mp.mpf(1), mp.mpf(2), mp.mpf(1), mp.mpf(1)],
+                         maxsteps=200, extraprec=400)
+    real = [r for r in roots if abs(mp.im(r)) < mp.mpf("1e-30")]
+    other = sorted([r for r in roots if abs(mp.im(r)) >= mp.mpf("1e-30")],
+                   key=lambda r: -mp.im(r))
+    if len(real) != 1 or len(other) != 2:
+        raise ArithmeticError("the period-3 cubic should have one real and two complex roots")
+    return [("rabbit", other[0]), ("corabbit", other[1]), ("airplane", real[0])]
+
+
+def centre_modulus(c):
+    """The modulus of the postcritical configuration of z^2 + c."""
+    f = RationalMap([mp.mpf(1), mp.mpf(0), c], [mp.mpf(1)])
+    return modulus(postcritical_list(f))
+
+
+def centre_table():
+    """[(name, c, modulus)] for the three period-3 centres."""
+    out = []
+    for name, c in period_three_centres():
+        out.append((name, c, centre_modulus(c)))
+    return out

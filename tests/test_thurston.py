@@ -24,8 +24,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from pullback.moduli import same_configuration  # noqa: E402
 from pullback.thurston import (  # noqa: E402
+    centre_table,
     distinct_preimages,
     modulus,
+    period_three_centres,
     postcritical_list,
     preimage_profile,
     rabbit_map,
@@ -82,6 +84,45 @@ class TestPostcriticalConfiguration(unittest.TestCase):
             self.assertLess(abs(modulus(postcritical_list(rabbit_map())) - tau), 1e-12)
         finally:
             mp.mp.dps = 40
+
+
+class TestPeriodThreeCentres(unittest.TestCase):
+    """The three maps a twist of the rabbit can be equivalent to.
+
+    All three have a critical 3-cycle, so all three are roots of
+    c^3 + 2c^2 + c + 1; their postcritical moduli are distinguishable, which
+    is what makes "which map is the twisted rabbit" a testable question.
+    """
+
+    def test_one_real_and_a_conjugate_pair(self):
+        centres = dict(period_three_centres())
+        self.assertEqual(set(centres), {"rabbit", "corabbit", "airplane"})
+        self.assertLess(abs(mp.im(centres["airplane"])), mp.mpf("1e-30"))
+        self.assertGreater(mp.im(centres["rabbit"]), 0)
+        self.assertLess(mp.im(centres["corabbit"]), 0)
+        self.assertLess(abs(centres["rabbit"] - mp.conj(centres["corabbit"])),
+                        mp.mpf("1e-28"))
+
+    def test_all_satisfy_the_cubic(self):
+        for _name, c in period_three_centres():
+            self.assertLess(abs(c ** 3 + 2 * c ** 2 + c + 1), mp.mpf("1e-28"))
+
+    def test_moduli_are_pairwise_distinct(self):
+        table = centre_table()
+        for i in range(3):
+            for j in range(i + 1, 3):
+                self.assertFalse(same_configuration(table[i][2], table[j][2]),
+                                 (table[i][0], table[j][0]))
+
+    def test_airplane_modulus_is_real(self):
+        # a real c gives a configuration symmetric under conjugation, hence
+        # four concyclic points and a real cross-ratio
+        tau = [t for (n, _c, t) in centre_table() if n == "airplane"][0]
+        self.assertLess(abs(tau.imag), 1e-9)
+
+    def test_rabbit_matches_the_earlier_parameter(self):
+        tau = [t for (n, _c, t) in centre_table() if n == "rabbit"][0]
+        self.assertLess(abs(tau - modulus(postcritical_list(rabbit_map()))), 1e-12)
 
 
 if __name__ == "__main__":
