@@ -748,6 +748,19 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      modulus the iteration converges to therefore *answers* the question, and the answer is
      independently checkable against BLMW's 4-adic law (`refs/blmw/`) and the NET census. That is
      the acceptance test for M4's first stage.
+     *`round_realise` built (2026-10-25).* `src/pullback/rounding.py`: the round realisation of a
+     triangulated sphere by Gauss–Newton on the exact discrete-conformal residual
+     r = (I − AA⁺)(log chord − log ℓ), where A is the edge–vertex incidence: r vanishes exactly when
+     a vertex scaling turns the given lengths into the chordal metric of an inscribed polyhedron.
+     Verified on the regular octahedron (residual 0 at its own configuration), on vertex scalings
+     of it (residual 0 with a non-constant u — the discrete-conformal invariance the method rests
+     on), on a single-edge perturbation (residual > 1e-3: the criterion discriminates), and by
+     recovery from a perturbed start to < 1e-10. One premise corrected by measurement: a metric
+     with a flat vertex (sides 1, 1, 2 per triangle) is NOT unroundable — the degenerate inscribed
+     limit satisfies the equations (residual 2.5e-13) — so the failing control is a metric that is
+     not piecewise Euclidean at all. Still standing between this and the twisted-rabbit test: the
+     marking, i.e. turning the engine's free-group automaton into the sphere-group machine that
+     IMG's pullback consumes (`NewSphereMachine` with a 4-generator relation), or our own σ.
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one
