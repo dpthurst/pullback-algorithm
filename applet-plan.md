@@ -673,6 +673,28 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      examples and the polynomial family first, with the Thurston pullback of
      230 (decided 2026-10-23) as the engine and Bartholdi's IMG as the
      cross-check.
+     *Route and mesh (author, 2026-10-25).* The first route is discrete conformal mapping —
+     Springborn's variational uniformisation (arXiv:1707.06848; equivalently Rivin's realization
+     theorem) — with IMG's `ThurstonAlgorithm` as the independent cross-check; a Hurwitz solver of
+     our own is not the first move. The triangulation will carry vertices **beyond P**: fixed or
+     periodic points, or well-chosen preimages of the postcritical set, because the discrete
+     uniformisation is only as good as its mesh and refinement is the convergence control. Nor may
+     anything be sized around the current library's n = 4–8 postcritical points: the library is
+     expected to grow.
+     *Related papers to read before building* (the numbers are Springborn's bibliography, checked
+     in the copy in `refs/`): [7] Bobenko–Pinkall–Springborn, *Discrete conformal maps and ideal
+     hyperbolic polyhedra*, Geom. Topol. 19 (2015) — the foundational variational paper (Prop. 10.2
+     cites its Thm. 5.1.2); [5] Bobenko–Dimitrov–Sechelmann, *Discrete uniformization of polyhedral
+     surfaces … and branched covers over the sphere via hyper-ideal circle patterns*, DCG 57 (2017)
+     — branched covers, which is our situation; [8] Bobenko–Sechelmann–Springborn, *Discrete
+     conformal maps: boundary value problems, circle domains, Fuchsian and Schottky uniformization*
+     (2016); [18] Gu–Luo–Sun–Wu, *A discrete uniformization theorem for polyhedral surfaces* (the
+     Delaunay-flip definition); [13] Epstein–Penner and [26, 27] Penner for the decorated
+     Teichmüller coordinates the algorithm works in; [38] Weeks for the flip algorithm; [6]
+     Bobenko–Izmestiev for the weighted-Delaunay/Alexandrov side; [11] Duffin, *Distributed and
+     lumped networks* — the same convex-energy structure as our elastic energies.
+     *Open.* A criterion for the extra vertices (not an accident of subdivision), and the
+     refinement and precision tests that decide when a reconstructed map is accepted (240).
 Deferred beyond the milestones (end-user **input front ends**, not engine work —
 they emit sessions and never modify the engine; deliberately postponed until a
 first implementation exists):
