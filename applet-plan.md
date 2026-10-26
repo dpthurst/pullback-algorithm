@@ -710,6 +710,19 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      hyperbolic-plane case, not for the |P| ≥ 5 case; the author also points to a census **up to
      degree 3 and 4 postcritical points**, which needs its exact reference from him (a title search
      did not find it).
+     *Large-|P| examples from the author's own paper (author, 2026-10-25).* The Devaney family
+     f_λ(z) = z² + λ/z² in [ConfDim] (`refs/confdim-src/applications.tex`, §"Fat real Devaney
+     examples" and §"Skinny Devaney examples") supplies parameters λ_w for a finite word w in
+     {L, R}: λ_n^fat for w = R^n and λ_n^skinny for w = LR^n, with f_λ^{n+1}(x_λ) = 0 and
+     x_λ = 4λ + 1/4. The postcritical set is {0, ∞} together with the orbit of the critical values
+     ±2√λ, which reaches 0 after n + 1 steps — so |P| grows with n (n + 4 for the fat family,
+     counting the two critical values, the n + 1 orbit points and ∞; verify against the figure
+     when encoding). n = 1 already gives |P| = 5, which is the smallest case that tests the
+     pullback iteration at all. **Caveat he states: the graph automaton is not coded** — the spine
+     G₀, the cover G₁ and φ exist only as the MetaPost drawings `draws/fat.mp`, `draws/skinny.mp`,
+     not as data. So either hand-encode n = 1 from the figure and let the engine's own checks
+     (ribbon boundary pattern, π₁, portrait) validate it, or do it properly through the deferred
+     importer (80-85), which takes (f, P, spine) and tracks f⁻¹(G₀).
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one
