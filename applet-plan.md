@@ -761,6 +761,33 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      not piecewise Euclidean at all. Still standing between this and the twisted-rabbit test: the
      marking, i.e. turning the engine's free-group automaton into the sphere-group machine that
      IMG's pullback consumes (`NewSphereMachine` with a 4-generator relation), or our own σ.
+     *The marking comes from the graph pullback, not from a sphere machine (author's suggestion,
+     2026-10-25).* The fibre product `spines.pullback(pi, f)` — already used for the iterate and
+     the spine transport — is a spine of S²∖f^{-n}(P) with both projections, so it *is* the marking:
+     the projection to Γ_n says which point of the n-th preimage set a point sits over, the
+     projection to Γ₁ says the sheet and the local degree, and a face's degree to Γ₀ is the local
+     degree of fⁿ, hence the cone angle. IMG's machine drops exactly this bookkeeping (it keeps the
+     wreath recursion, a quotient) and reconstructs the correspondence by hand (`MATCHTRANS@`,
+     `MATCHPERMS@`, then a Möbius normalisation), so adopting it would mean rebuilding information
+     the engine already has, in a second set of conventions (FR acts on the right — already a bug
+     source). The iteration therefore becomes: τ → the 4 points on S² → chordal lengths on the
+     2-triangle triangulation → lift through π: Γ₁ → Γ₀ (lengths and face labels: the marking) →
+     `round_realise` the 6-vertex metric → τ' = cross-ratio of the 4 points of P inside f^{-1}(P),
+     identified by the dynamics on P and the cover's face map. The one genuine choice is that
+     identification (the diagonal copy of Γ₀ in Γ₁); the decisive test is that **σ(τ_rabbit) =
+     τ_rabbit** up to the six substitutions, since the rabbit's configuration is known exactly — a
+     wrong marking fails it rather than passing silently.
+     *Teichmüller, not moduli (author's correction, 2026-10-25).* The state of the iteration is a
+     **labelled** configuration: σ pulls back the structure and the preimage of a puncture is again
+     labelled by it, so σ acts on Teich(S², P), and on moduli space it is defined only up to the
+     relabelling group — a moduli fixed point can be a point of the right orbit that is not a fixed
+     point of σ at all. `moduli.Configuration` is the labelled object (labels = the session's
+     punctures, coordinate read in label order), with `permuted()` exhibiting the difference (same
+     moduli, different Teichmüller coordinate: 1/2 versus 2 on the standard quadruple) and
+     `pullback_labels()` transporting labels through f|_P, which for the rabbit's dynamics
+     (0 → c → c²+c → 0, ∞ fixed) gives the preimage order [p2, p0, p1, p3]. **The acceptance test is
+     therefore a labelled one: σ(τ_rabbit) = τ_rabbit as labelled configurations** — a moduli
+     agreement would not prove it.
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one
