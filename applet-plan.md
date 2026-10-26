@@ -693,8 +693,40 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      Teichmüller coordinates the algorithm works in; [38] Weeks for the flip algorithm; [6]
      Bobenko–Izmestiev for the weighted-Delaunay/Alexandrov side; [11] Duffin, *Distributed and
      lumped networks* — the same convex-energy structure as our elastic energies.
-     *Open.* A criterion for the extra vertices (not an accident of subdivision), and the
-     refinement and precision tests that decide when a reconstructed map is accepted (240).
+     *The library has no non-trivial test case (measured 2026-10-25).* The number of punctures of
+     the spine — the size of P — by session: |P| = 3 for barbell, barycentric, blown-up-lattes,
+     bouquet, census-53, slit-lattes and the map (1+z²)/(1−z²) called `theta`; |P| = 4 for
+     census-3.2, julia-4422, julia-4442, rabbit, tetrahedral, twisted-rabbit and twisted-z2i; and
+     the only |P| = 5 entry, grigorchuk, is a group with no ribbon presentation. With |P| = 3 the
+     Teichmüller space is a single point (author, 2026-10-25), so pullback iteration is
+     superfluous and those seven sessions cannot test it; with |P| = 4 it is the hyperbolic plane,
+     which the author expects to be approachable by other means. **A test case with |P| ≥ 5 has to
+     be built**, and the choice of the extra triangulation vertices waits on it.
+     *Census to draw on.* Floyd–Parry–Pilgrim's census of **NET maps** — nearly Euclidean Thurston
+     maps, all critical points simple and |P| exactly 4 (Cannon–Floyd–Parry–Pilgrim, arXiv:1204.3615;
+     Floyd–Parry–Pilgrim, *Presentations of NET maps*, arXiv:1701.00443, and *Modular groups,
+     Hurwitz classes and dynamic portraits of NET maps*, arXiv:1703.03983; the NETmap program,
+     Floyd–Parry–Pilgrim, arXiv:1812.01066). It covers |P| = 4, so it supplies test data for the
+     hyperbolic-plane case, not for the |P| ≥ 5 case; the author also points to a census **up to
+     degree 3 and 4 postcritical points**, which needs its exact reference from him (a title search
+     did not find it).
+     *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
+     contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
+     group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one
+     implies contraction of the others. That is the sharpest statement available for the
+     three-groups question of A0 (graph π₁ / orbifold π₁ / IMG) and should be read before any
+     further contraction claim. Bartholdi–Dudko–Pilgrim, *Correspondences on Riemann surfaces and
+     non-uniform hyperbolicity* (arXiv:2407.15548): for |P| = 4 a finite invariant collection of
+     curve classes and a graph attractor giving topological normal forms — the |P| = 4 method the
+     author alludes to. And the recent citing work of [Springborn]: *The Convergence of Discrete
+     Uniformizations for Genus Zero Surfaces* (DCG 2023) and Luo's *Discrete conformal geometry of
+     polyhedral surfaces and its convergence* (Geom. Topol. 26 (2022) 937) for the convergence
+     question behind the discrete iteration; *Metric Optimization in Penner Coordinates* (TOG 2023)
+     and *Efficient and robust discrete conformal equivalence with boundary* (TOG 2021) for the
+     numerics; *Prescribed curvature problem for discrete conformality on convex spherical
+     cone-metrics* (Adv. Math. 2023) for the spherical cone-metric setting we are in.
+     *Naming (author, 2026-10-25).* The session keyed `theta` is better referred to by its map,
+     **(1+z²)/(1−z²)**; in the app, name sessions by the map where one is known.
 Deferred beyond the milestones (end-user **input front ends**, not engine work —
 they emit sessions and never modify the engine; deliberately postponed until a
 first implementation exists):
