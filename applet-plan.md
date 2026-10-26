@@ -731,6 +731,14 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      piece built: `src/pullback/moduli.py`, the four-point chart (cross-ratio with the infinite
      entries taken as limits, Möbius invariance, the six-value orbit, "same configuration"),
      tested in `tests/test_moduli.py`.
+     *The rabbit's numeric data (built 2026-10-25).* `src/pullback/thurston.py`: the rabbit
+     parameter as the root of c³ + 2c² + c + 1 with Im > 0 (from the critical orbit
+     0 → c → c² + c → 0), its postcritical configuration {0, c, c²+c, ∞}, the local degrees over P
+     = [1, 1, 1, 1, 2, 2] — **which match the session's combinatorial portrait exactly**, the
+     analytic/combinatorial cross-check — and the modulus of the configuration, the fixed point the
+     pullback iteration has to recover. Vertex count of the pullback mesh (author's correction): the
+     distinct preimages are **six**, not d|P| = 8; the two critical values contribute one preimage
+     each, of multiplicity two, and the session's six cover faces say the same.
      *Recent work that bears on the engine's own questions.* Parry–Pilgrim, *Characterizations of
      contracting Hurwitz bisets* (arXiv:2506.23222): three iterated systems — the pure mapping class
      group, Teichmüller space, and a finite-dimensional real vector space — and contraction of one

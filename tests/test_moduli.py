@@ -1,8 +1,8 @@
 """The four-point moduli chart: known-answer checks.
 
-- cr(0, 1, inf, z) = (z - 1)/z, by the convention stated in the module (the
-  other common normalisation differs by z -> 1/(1-z), a symmetry of the six
-  values, so nothing distinguishes them mathematically);
+- the standard normalisation, in the author's slot order: cr(inf, 0; 1, z) = z;
+  putting infinity third gives (z - 1)/z, one of the six substitutes, so the
+  same configuration;
 - the cross-ratio is invariant under every Möbius transformation (tested on
   a random one, and on the ones that fix or permute the standard points);
 - four points are concyclic or collinear iff the cross-ratio is real: the
@@ -31,13 +31,12 @@ INF = complex(np.inf)
 
 class TestCrossRatio(unittest.TestCase):
     def test_standard_normalisation(self):
-        # cr(0,1,inf,z) = (z-1)/z under this convention, and the model point
-        # (0, 1, z) with infinity in the fourth slot gives z/(z-1); the two
-        # are reciprocal substitutes, as the six-value orbit requires.
+        # cr(inf, 0; 1, z) = z -- the standard normalisation, in the slot
+        # order the author uses.  With infinity in the third slot the same
+        # formula returns (z-1)/z, one of the six substitutes.
         for z in (0.3 + 0.4j, -2.0, 0.5j, 3 + 1e-3j):
+            self.assertAlmostEqual(abs(cross_ratio(INF, 0, 1, z) - z), 0.0, places=12)
             self.assertAlmostEqual(abs(cross_ratio(0, 1, INF, z) - (z - 1) / z),
-                                   0.0, places=12)
-            self.assertAlmostEqual(abs(cross_ratio(0, 1, z, INF) - z / (z - 1)),
                                    0.0, places=12)
 
     def test_infinite_entries_by_limit(self):

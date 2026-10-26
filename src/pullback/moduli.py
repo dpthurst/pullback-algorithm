@@ -11,9 +11,10 @@ Conventions: for four distinct points,
 
     cr(a, b, c, d) = (a - c)(b - d) / ((a - d)(b - c)),
 
-so cr(0, 1, inf, z) = (z - 1)/z (some texts normalise the other way round, by
-the substitution z -> 1/(1-z); it is the same invariant up to a symmetry of
-the six values), and the four points are concyclic (or collinear)
+so the standard normalisation holds in the author's form: cr(inf, 0; 1, z) = z
+(check the slot order -- with 0 and 1 first and infinity third the same
+formula gives (z - 1)/z, which is one of the six substitutes and describes
+the same configuration), and the four points are concyclic (or collinear)
 iff the cross-ratio is real.  A Möbius map changes the value by one of the
 six substitutions z, 1/z, 1-z, 1/(1-z), z/(z-1), (z-1)/z, so the chart is the
 quotient of C - {0, 1} by S_3: two cross-ratios related by one of these
