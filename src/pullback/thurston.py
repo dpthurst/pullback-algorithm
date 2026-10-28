@@ -26,8 +26,8 @@ from __future__ import annotations
 import mpmath as mp
 import numpy as np
 
-from .moduli import cross_ratio, is_inf
-from .rational import RationalMap
+from .moduli import cross_ratio
+from .rational import RationalMap, mobius_conjugate
 
 mp.mp.dps = 40
 
@@ -119,3 +119,57 @@ def centre_table():
     for name, c in period_three_centres():
         out.append((name, c, centre_modulus(c)))
     return out
+
+
+# ------------------------------------------------ strictly rational examples
+#
+# Every example above is a polynomial, and a polynomial's infinity is fixed and
+# totally ramified: infinity is in P, it is a critical point, and it is its own
+# critical value.  That is a special geometry -- the mesh always has a vertex at
+# infinity, the preimage of P always contains infinity, and the cover always has
+# a ramified sheet over a fixed point -- and a discretisation that only ever
+# meets it is not tested.  The two maps below are proper rational maps (not
+# polynomials), with exact data.
+
+
+def strictly_rational_rabbit():
+    """A proper rational map with the rabbit's portrait: M o (z^2 + c) o M^-1
+    for M(z) = 1/(z + 1).
+
+    It is not a polynomial (f(infinity) = 1/(c + 2), finite), and no point of P
+    is infinity: P = {1, 1/(c+1), 1/(c^2+c+1), 0}.  So the mesh has no vertex at
+    infinity, the cover has no fixed ramified point, and every statement about
+    the pullback mesh has to be made without the polynomial's crutch.  Its
+    portrait degrees are the rabbit's, [1, 1, 1, 1, 2, 2], which the tests check
+    against the map rather than assume.
+    """
+    cc = rabbit_parameter()
+    f = mobius_conjugate(RationalMap([mp.mpf(1), mp.mpf(0), cc], [mp.mpf(1)]),
+                         mp.mpf(1), mp.mpf(0), mp.mpf(1), mp.mpf(1))
+    return {"name": "rabbit-by-mobius", "map": f, "parameter": cc,
+            "mobius": (mp.mpf(1), mp.mpf(0), mp.mpf(1), mp.mpf(1))}
+
+
+def slit_rational_map():
+    """(2 z^2 - 4)/z^2 = 2 - 4/z^2: strictly rational, exact rational
+    coefficients, and genuinely not a polynomial.
+
+    Postcritical set {2, 1, -2, infinity} -- four points: the critical points are
+    0 and infinity, and their orbits are 0 -> infinity -> 2 -> 1 -> -2 -> 1.  So
+    |P| = 4, the portrait degrees are [1, 1, 1, 1, 2, 2], and |f^{-1}(P)| = 6
+    (two double preimages: 0 and infinity).  Neither critical point is fixed, so
+    no Moebius conjugation makes it a polynomial.
+
+    The cycle 1 <-> -2 contains no critical point, so its type is "cycle without
+    branch point" -- z^2 + i's type, and the type recorded for julia-4442.  The
+    pullback therefore does not contract on pi_1 and this map is *not* a
+    convergence target; it is the strictly rational geometry test, with the
+    property that every coefficient and every point of P is exact, and that
+    infinity is a pole which is also a critical point.
+
+    (For the record, an exactly known *hyperbolic* strictly rational map with
+    |P| = 4 is not available here: that is the twisted-rabbit question, and its
+    configuration is what the pullback is supposed to find.)
+    """
+    return RationalMap([mp.mpf(2), mp.mpf(0), mp.mpf(-4)],
+                       [mp.mpf(1), mp.mpf(0), mp.mpf(0)])

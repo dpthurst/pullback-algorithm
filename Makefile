@@ -1,7 +1,45 @@
 PYTHON = python3
 
+# The suite, split by what it exercises.  `check` is still the union of all of
+# it, so nothing is lost by running the pieces.  Measured 2026-10-26 on this VM
+# (shared, other sessions resident), per target: numerics ~1 s, engine ~21 s,
+# database ~34 s, energies ~87 s, applet ~1 s; the whole suite ~142 s.
+# test_database (34 s) and test_spines (13 s) dominate the engine group; the
+# database sweep is the library-wide check, so it gets a target of its own.
+ENGINE = tests.test_m0_theta tests.test_m1_residue tests.test_m2_core \
+         tests.test_m2_classify tests.test_rabbit_versions tests.test_refined \
+         tests.test_spines tests.test_library tests.test_session_api \
+         tests.test_certificates
+DATABASE = tests.test_database
+ENERGIES = tests.test_energies tests.test_minimise tests.test_fastmin \
+           tests.test_covermin
+NUMERICS = tests.test_rational tests.test_moduli tests.test_teich \
+           tests.test_thurston tests.test_rounding tests.test_mesh \
+           tests.test_strictly_rational tests.test_julia
+
 check:
 	$(PYTHON) -m unittest discover -s tests
+
+check-engine:
+	$(PYTHON) -m unittest $(ENGINE)
+
+check-database:
+	$(PYTHON) -m unittest $(DATABASE)
+
+check-energies:
+	$(PYTHON) -m unittest $(ENERGIES)
+
+check-numerics:
+	$(PYTHON) -m unittest $(NUMERICS)
+
+check-quick:
+	$(PYTHON) -m unittest $(ENGINE) $(NUMERICS)
+
+check-all-but-energies:
+	$(PYTHON) -m unittest $(ENGINE) $(DATABASE) $(NUMERICS)
+
+# the applet panels need the offscreen platform, which `check-applet` sets
+check-slow: check-energies check-applet
 
 m0:
 	$(PYTHON) scripts/m0_theta.py
@@ -20,4 +58,6 @@ check-applet:
 dbcheck:
 	$(PYTHON) scripts/db_iteration_check.py
 
-.PHONY: check m0 dbcheck applet check-applet
+.PHONY: check check-engine check-database check-energies check-numerics \
+        check-quick check-all-but-energies check-slow \
+        m0 dbcheck applet check-applet

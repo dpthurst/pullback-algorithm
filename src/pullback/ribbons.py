@@ -133,6 +133,29 @@ class RibbonGraph:
 
         return sorted((canonical_rotation(w) for w in walks), key=key)
 
+    def dual(self):
+        """The dual ribbon graph.
+
+        Vertices are the faces of this graph (the punctures, for a spine of
+        S^2 - P), edges are dual to this graph's edges, and the cyclic order at
+        a dual vertex is the boundary walk of the corresponding face, reversed --
+        the standard reversal for the dual of an oriented map.  The dual's faces
+        are then this graph's vertices, so `dual` is an involution up to
+        relabelling, which the tests check.
+
+        The construction is one line because a face walk is a cycle of darts and
+        each dart of the walk is one half-edge of the dual edge crossing it:
+        the dual flower at a face is the reversed walk.
+        """
+        face_of_dart = {}
+        for i, walk in enumerate(self.faces()):
+            for d in walk:
+                face_of_dart[d] = i
+        flowers = {}
+        for i, walk in enumerate(self.faces()):
+            flowers[i] = tuple(reversed([(d[0], d[1]) for d in walk]))
+        return RibbonGraph(flowers)
+
     def mirror(self):
         """The globally reversed ribbon structure (every cyclic order
         reversed).  For a planar spine this is the mirror image, and its

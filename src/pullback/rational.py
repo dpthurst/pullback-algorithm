@@ -67,6 +67,19 @@ class RationalMap:
             return mp.inf
         return n / d
 
+    def derivative(self, z):
+        """f'(z) = (N'D - N D')/D^2, for finite z away from the poles."""
+        def deriv(c):
+            n = len(c) - 1
+            return [c[i] * (n - i) for i in range(n)]
+        z = mp.mpc(z)
+        N, D = self.num, self.den
+        num = _polyval(_polysub(_polymul(deriv(N), D), _polymul(N, deriv(D))), z)
+        den = _polyval(D, z)
+        if abs(den) < mp.mpf(10) ** (-mp.mp.dps + 8):
+            return mp.inf
+        return num / (den * den)
+
     def critical_points(self):
         """Finite critical points: roots of N'D - N D'."""
         def deriv(c):
@@ -268,3 +281,72 @@ def _polysub(a, b):
     a = [0] * (n - len(a)) + list(a)
     b = [0] * (n - len(b)) + list(b)
     return [x - y for x, y in zip(a, b)]
+
+
+# --------------------------------------------------- Moebius conjugation
+
+def _padd(a, b):
+    """Sum of two coefficient lists, highest power first."""
+    n = max(len(a), len(b))
+    a = [mp.mpc(0)] * (n - len(a)) + [mp.mpc(c) for c in a]
+    b = [mp.mpc(0)] * (n - len(b)) + [mp.mpc(c) for c in b]
+    return [x + y for x, y in zip(a, b)]
+
+
+def _pscale(s, a):
+    return [mp.mpc(s) * mp.mpc(c) for c in a]
+
+
+def _pmul(a, b):
+    out = [mp.mpc(0)] * (len(a) + len(b) - 1)
+    for i, x in enumerate(a):
+        for j, y in enumerate(b):
+            out[i + j] += mp.mpc(x) * mp.mpc(y)
+    return out
+
+
+def mobius_conjugate(f, a, b, c, d):
+    """M o f o M^-1 for M(z) = (a z + b)/(c z + d), as a RationalMap.
+
+    Conjugation by a Möbius map preserves the critical portrait, the orbifold
+    and the type; it moves the geometry.  Applied to a polynomial with M not
+    affine it produces a map that is not a polynomial, whose postcritical set
+    need not contain infinity -- the strictly rational test cases.
+    """
+    if a * d - b * c == 0:
+        raise ValueError("M is degenerate")
+    N, D = [mp.mpc(x) for x in f.num], [mp.mpc(x) for x in f.den]
+    # M^-1(w) = (d w - b)/(a - c w)
+    N1, D1 = [d, -b], [-c, a]
+    # X = f(M^-1(w)) = (N(N1/D1) * D1^deg ... ) -- do it by degree bookkeeping:
+    # with p = deg f, f(x) = (sum N_k x^(p-k))/(sum D_k x^(q-k)), so
+    # f(N1/D1) = sum_k N_k N1^(p-k) D1^k  /  sum_k D_k N1^(q-k) D1^k
+    def compose(poly, n1, d1):
+        p = len(poly) - 1
+        acc = [mp.mpc(0)]
+        for k, ck in enumerate(poly):
+            term = _pscale(ck, _pmul(_ppow(n1, p - k), _ppow(d1, k)))
+            acc = _padd(acc, term)
+        return acc
+    A = compose(N, N1, D1)          # N(X) = A / D1^p
+    B = compose(D, N1, D1)          # D(X) = B / D1^q
+    # f(X) = N(X)/D(X) = D1^(q-p) A/B, so multiply through by the power of D1
+    # that clears it.  Multiplying both by a *common* power instead leaves an
+    # unfactored common factor, and then N(w) - x D(w) has a root independent of
+    # x: every preimage list gets a spurious extra point (measured on the slit
+    # map, whose critical values were read as three preimages each).
+    p, q = len(N) - 1, len(D) - 1
+    if p >= q:
+        B = _pmul(B, _ppow(D1, p - q))
+    else:
+        A = _pmul(A, _ppow(D1, q - p))
+    num = _padd(_pscale(a, A), _pscale(b, B))
+    den = _padd(_pscale(c, A), _pscale(d, B))
+    return RationalMap(num, den)
+
+
+def _ppow(p, k):
+    out = [mp.mpc(1)]
+    for _ in range(k):
+        out = _pmul(out, p)
+    return out

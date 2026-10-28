@@ -681,6 +681,81 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      uniformisation is only as good as its mesh and refinement is the convergence control. Nor may
      anything be sized around the current library's n = 4–8 postcritical points: the library is
      expected to grow.
+     *The vertex criterion, one hard constraint found (2026-10-26).* The extra vertices are not
+     free: three conditions are forced by the data, each of which makes the coarsest mesh
+     unusable, and none of them is numerical. (a) A base edge whose two endpoints each have a
+     single preimage — the two critical values of a degree-2 map with four postcritical points —
+     lifts to a *bigon*, so the lifted "faces" are not triangles; the tetrahedron joins every
+     pair, so it always has one. (b) A face containing an antipodal pair of vertices is a
+     hemisphere with no usable interior point, and 0 and ∞ are antipodal in *every* chart, so
+     every polynomial whose critical point is periodic has such a face. (c) A point set lying in
+     a closed hemisphere has no triangulation at all — the slit map's P = {2, 1, −2, ∞} is on the
+     real line, so no triple is a face. So the criterion the author asked for must include: no
+     edge joining two critical values, no face with an antipodal pair, and the vertex set not
+     contained in a closed hemisphere. `src/pullback/mesh.py` and `discrete.base_mesh` implement
+     these and insert vertices until they hold (measured: rabbit 12, slit map 6); the step itself
+     still stops at the cyclic order at a lifted vertex, which cannot be read off the round
+     positions — detail and the next step are in `notes/thurston-pullback.md`.
+     *The refinement study, run (2026-10-26): the naive scheme does not converge, and why.*
+     `scripts/refinement_study.py` runs the discrete step at a known fixed point (the rabbit, and the
+     strictly rational rabbit) under face-centre refinement of the base mesh. Measured: the step error
+     is constant in the refinement (1.228e-01 at levels 0, 1 and 2 for the rabbit; 2.279 for the
+     rabbit-by-Moebius) while the round realisation converges (residual 1e-12). The reason is a
+     theorem, not a measurement: vertex scalings leave cone angles unchanged, so cone angles are
+     invariants of discrete conformal equivalence; pulling a flat metric back multiplies the angle at a
+     lift by its local degree; and the chordal metric of the analytic preimages has angle < 2pi at
+     every vertex. So the lifted metric and the analytic metric are never discretely conformally
+     equivalent, at any refinement. **The scheme needs prescribed cone angles — the hyper-ideal
+     treatment of [5] Bobenko–Dimitrov–Sechelmann, branched covers over the sphere — and until it has
+     them no refinement criterion can make it converge.** Two further results from the same pass: the
+     cyclic order at a lifted vertex is forced at every simple corner, so the faces need neither a
+     search nor the round geometry (which provably gives the wrong order there); and the diagonal copy
+     of P in f^{-1}(P) is read with label p at the source point p, which lies over f(p) — the other
+     reading returns the input relabelled by f|_P, a mesh-independent quantity, which is how the mistake
+     was caught. Detail in `notes/thurston-pullback.md`.
+     *The mesh is a ribbon graph, and the order is checked against the spine (author, 2026-10-26).*
+     `ribbons.RibbonGraph.dual()` gives the dual ribbon graph (an involution up to relabelling, tested);
+     `mesh.RibbonMap` is a map given by a rotation system, with `faces`, `dual`, and a
+     `subdivide_faces` that is a ribbon operation — the rotation at the old vertices is *preserved*, and the
+     dual is refined by the dual operation.  `mesh.ribbon_order_of_spine` reads the topological order at every
+     puncture out of the ribbon structure (the dual of the spine has the punctures as vertices; for the
+     rabbit's bouquet-of-loops spine it is a tree on the four punctures, so the order is the tree's cyclic order
+     there).  And the check earns its keep: the tetrahedron on the rabbit's postcritical set is consistent with
+     the ribbon order under 6 of the 24 markings, all agreeing on the degree-3 puncture — but the mesh the
+     study actually uses, the hull triangulation plus the vertices inserted to break the bigon and the
+     antipodal pair, admits **no** consistent marking, because the insertion re-triangulates by the hull and
+     drops the tree's edges.  So the level-0 map must be built from the spine's dual and refined by ribbon
+     operations, adding the extra edges in the slots the geometry gives; `mesh.consistent_markings` is the
+     check that will say when that is done.  Detail in `notes/thurston-pullback.md`.
+     *The level-0 map from the spine's dual: built (2026-10-26).* `mesh.level0_map(points, spine)` builds
+     the mesh the ribbon-order check asked for: the spine-dual's edges (for the rabbit, a tree on the four
+     punctures, all three of its edges sides of the quadrilateral of analytic positions) are required as a
+     subgraph, both mirror classes of the 4-point triangulation are built, and `consistent_markings` chooses —
+     the hull's class admits 0 markings, the mirrored one 6, so the mirror class is a real choice and the check
+     makes it.  Refinement is `RibbonMap.subdivide_faces`, and the ribbon order survives every level (measured
+     through four: V = 4 → 8 → 20 → 56 → 164, all validating, all consistent); the dual is refined by the dual
+     operation and is itself refinable.  Three conventions found and fixed by the checks: the face walk is
+     sigma of the reversed dart (not alpha of sigma); the centre's flower is the face's corner order reversed
+     (the same reversal as the dual's rotation); and the mirror-class dedup must be by rotation, not by faces
+     (deduping by faces silently drops the second class).  The check itself was corrected twice against
+     measurements: restrict to the tree's neighbours, and fix the cyclic start.  Limits: 4 points only (the
+     enumeration waits for a map with |P| >= 5), and the step still does not converge — this fixes the
+     combinatorics, not the cone-angle problem, which is [5].
+     *The hyper-ideal implementation plan (2026-10-28).* `notes/bds-hyper-ideal-plan.md` plans the [5]
+     construction: what our measurements require (the cone-angle obstruction of the study), what the paper
+     provides (Theorems 1–3, the variational principle of Sections 10–11 with the gradient being the angle
+     mismatch, the Section 13.2 doubling algorithm, the Section 14 numerics), the proposed mapping of the
+     pullback step onto the paper's Type-2 data (lift combinatorics and angles, not lengths; uniformize by
+     correcting the cone angles to 2π), five questions for the author's reading (the labelled reading of the
+     output; the all-flat case; the Delaunay requirement vs the spine-dual complex; the choice of k∞; the
+     precision target), and a seven-stage implementation plan with a failing test at each stage. Not
+     implemented; the paper is cached at .scratch/bds-1510.04053.pdf for the author's reading.
+     *Strictly rational test data (author's request, 2026-10-26).* Every numeric example was a
+     polynomial, whose infinity is fixed and totally ramified. `thurston.strictly_rational_rabbit`
+     (the rabbit conjugated by z ↦ z/(z+1): not a polynomial, no point of P at infinity, a
+     convergence target with a known answer) and `thurston.slit_rational_map` ((2z²−4)/z², exact
+     rational coefficients, P = {2, 1, −2, ∞}, type "cycle without branch point" like julia-4442,
+     so a mesh test and not a convergence target) now cover the case.
      *Related papers to read before building* (the numbers are Springborn's bibliography, checked
      in the copy in `refs/`): [7] Bobenko–Pinkall–Springborn, *Discrete conformal maps and ideal
      hyperbolic polyhedra*, Geom. Topol. 19 (2015) — the foundational variational paper (Prop. 10.2
