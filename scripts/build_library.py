@@ -22,6 +22,9 @@ from pullback.ribbons import fmt_dart
 # (elastic weights) recorded for M3.
 #
 # Session schema (the fields `main` writes into every session):
+#   dynamical_class     optional historical provenance only.  The convergence
+#                       gate computes the dynamical orbifold from (pi, phi);
+#                       neither this field nor a filename overrides that check.
 #   graph, cover, phi   the Harmonic-format strings (the data model)
 #   marked              vertices of the BASE graph whose lifts are pinned:
 #                       a marked vertex v requires every lift of v in the
@@ -196,7 +199,7 @@ def main():
         sess = {k: v for k, v in ex.items()
                 if k in ("source", "map", "graph", "cover", "phi", "elastics",
                          "lengths", "elastics_tuned", "elastics_order", "note",
-                         "punctures", "category",
+                         "punctures", "category", "dynamical_class",
                          "expected_from_output_tex", "expected_from_confdim")}
         sess["marked"] = list(ex.get("marked", []))
         sess["orbifold"] = list(ex.get("orbifold", []))

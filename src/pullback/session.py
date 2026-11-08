@@ -101,6 +101,71 @@ class Session:
         return f"<Session {self.name!r} degree {self.degree}>"
 
     # ------------------------------------------------------------ the steps
+    def initial_geometry(self, points=None, seed=0, chains=None, max_word=1):
+        """An arbitrary geometric initialisation and frozen lifted cover.
+
+        No analytic map or analytic preimage is read.  The session's VE data
+        determine the transport and lifted combinatorics; `points` optionally
+        supplies an arbitrary initial configuration (otherwise a Fibonacci
+        sphere, rotated by `seed`).  `chains` optionally selects one of the
+        admissible homotopy equivalences enumerated in that search.
+
+        This is an initial condition, not a transport-uniqueness assertion.
+        The returned state's `step` and `iterate` expose discretisation
+        residual/rank/excess/embedding diagnostics.
+        """
+        from .ve_state import VEInit
+        state = VEInit(self, points=points, seed=seed, chains=chains,
+                       max_word=max_word)
+        state.convergence = self.convergence()
+        return state
+
+    def initial_dual_state(self, positions=None, seed=0):
+        """Initialise from the edge-labelled dual of the session's spines.
+
+        This reads only (base, cover, phi), with optional arbitrary puncture
+        positions.  It returns `initial.InitialState`: projection, diagonal,
+        dynamics and frozen lifted labels are computed, not guessed.  In
+        particular, the spine dual can under-determine the conformal class;
+        `structure` and `certificates` report that rather than presenting a
+        residual-only success as convergence.
+        """
+        from .initial import InitialState
+        state = InitialState(self, positions=positions, seed=seed)
+        state.convergence = self.convergence()
+        return state
+
+    def dynamical_orbifold(self):
+        """Thurston's dynamical orbifold and the ramification-based classes.
+
+        This is not the session schema's reserved orbigraph field: these cone
+        orders attach to postcritical punctures and are computed from the
+        ramification portrait.  Lattès portrait, rigid affine-quotient type
+        and the flexibility boundary are reported alongside the exact orders
+        and Euler characteristic.  Undetermined markings raise OrbifoldError.
+        """
+        from .orbifold import orbifold_of_session
+        def run():
+            portrait, orbifold, lattes = orbifold_of_session(self)
+            return {"portrait": portrait, "orbifold": orbifold,
+                    "lattes": lattes}
+        return self._memo("dynamical_orbifold", run)
+
+    def convergence(self):
+        """The VE-computed orbifold and dynamical gate.
+
+        A hyperbolic orbifold makes a candidate.  Parabolic/spherical
+        orbifolds and undetermined markings are excluded.  Unbranched cycles
+        remain candidates with an explicit warning: pullback makes sense,
+        but rationality, obstruction and convergence are separate questions.
+        ``candidate`` is not a contraction or fixed-point proof.
+        Lattès-portrait and
+        flexible-Lattès statuses are reported separately; a historical
+        ``dynamical_class`` label never overrides the computed certificate.
+        """
+        from .convergence import convergence_guard
+        return self._memo("convergence", lambda: convergence_guard(self))
+
     def validation(self):
         """The plan-100 bundle: cover connected, base connected, pi_1
         surjective."""
