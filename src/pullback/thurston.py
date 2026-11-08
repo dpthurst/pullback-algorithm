@@ -173,3 +173,38 @@ def slit_rational_map():
     """
     return RationalMap([mp.mpf(2), mp.mpf(0), mp.mpf(-4)],
                        [mp.mpf(1), mp.mpf(0), mp.mpf(0)])
+
+
+def img_golden_maps():
+    """Bartholdi's IMG table entries [4,15,1] and [4,15,2]: two strictly rational
+    quadratic maps, with a critical 4-cycle, |P| = 4 and f|_P a permutation.
+
+    Source: `~/.gap/pkg/img/gap/examples.gi`, the `DBRationalIMGGroup` database
+    ("Dau's table").  Its entry is `((-3/2+sqrt5/2)z+1)^-2` and its conjugate, so
+    each map is f(z) = 1/(c z + 1)^2 with c = -(3 -/+/ sqrt 5)/2.  Both have exact
+    algebraic data, unlike the rabbit's approximated cubic root.
+
+    Measured on them: |P| = 4 with ONE 4-cycle, the portrait degrees
+    [1, 1, 1, 1, 2, 2] (two ramified sheets), |f^{-1}(P)| = 6, f|_P is a
+    permutation of P (so the labelled diagonal copy in f^{-1}(P) is well defined),
+    and no unbranched cycle in P, i.e. hyperbolic type -- the type for which the
+    pullback should contract.  f(infinity) = 0, so these are NOT polynomials and
+    not Moebius conjugates of polynomials: the infinity of a polynomial is a
+    fixed, totally ramified point, whereas here infinity is on the critical
+    4-cycle.
+
+    For [4,15,1] the cycle is 0 -> 1 -> phi^2 -> infinity -> 0 (phi the golden
+    ratio), where phi^2 = (3 + sqrt 5)/2 is a double pole and infinity maps to 0
+    with local degree 2.
+
+    Returns a list of (name, map, coefficient) triples, in that table's order.
+    """
+    out = []
+    for tag, sign in (("4.15.1", 1), ("4.15.2", -1)):
+        # the table's entries are ((-3/2 +/- sqrt 5/2) z + 1)^-2, so
+        # c = (-3 +/- sqrt 5)/2, sign = +1 for [4,15,1] and -1 for [4,15,2]
+        c = (-3 + sign * mp.sqrt(5)) / 2
+        # 1/(c z + 1)^2: numerator 1, denominator (c z + 1)^2 = c^2 z^2 + 2 c z + 1
+        den = [c * c, 2 * c, mp.mpc(1)]
+        out.append((f"img-{tag}", RationalMap([mp.mpf(1)], den), c))
+    return out

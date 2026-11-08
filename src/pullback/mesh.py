@@ -16,11 +16,11 @@ Two facts drive the design.
   on (S^2, f^{-1}(V)) with no Hurwitz solve anywhere.
 * The cone angle at a lift is multiplied by the local degree: if q lifts p
   with local degree e, the angle at q in the pulled-back metric is e times the
-  base angle at p.  For e >= 2 and a base angle near 2*pi that is a
-  *hyper-ideal* vertex (angle >= 2*pi), which no inscribed polyhedron has
-  (every vertex of one has angle < 2*pi).  This is a real obstruction to
-  `rounding.round_realise` at the critical preimages, not a numerical one, and
-  it is measured in `scripts/refinement_study.py` rather than asserted.
+  base angle at p.  This can exceed 2*pi at a critical preimage.  It is NOT
+  invalid input for discrete conformal uniformisation: Springborn's Theorem
+  10.5 covers every piecewise-Euclidean sphere metric, and vertex scaling
+  changes angles.  Angles above 2*pi belong to the separate BDS
+  prescribed-angle/hyper-ideal discussion, not a round_realise guard.
 
 The lift is computed by *path lifting*, not by matching nearest points: for
 each base face a sample point in its interior is taken, then for each of its
@@ -145,9 +145,14 @@ class Mesh:
         return np.array([to_vector(p) for p in self.points])
 
     def edges(self):
-        out = sorted({edge_key(f[k], f[(k + 1) % 3])
-                      for f in self.faces for k in range(3)})
-        return out
+        """The edge set, for faces of any size (a polygonal cell decomposition
+        of the sphere, not only a triangulation)."""
+        out = set()
+        for f in self.faces:
+            n = len(f)
+            for k in range(n):
+                out.add(edge_key(f[k], f[(k + 1) % n]))
+        return sorted(out)
 
     def rotation(self):
         """The rotation system of this mesh: the cyclic order of the neighbours
@@ -175,21 +180,32 @@ class Mesh:
         return {e: float(np.linalg.norm(v[e[0]] - v[e[1]])) for e in self.edges()}
 
     def validate(self, tolerance=0.0):
-        """Structural checks: a closed orientable triangulated sphere.
+        """Structural checks: a closed orientable cell decomposition of S^2,
+        with faces of any size (not necessarily a triangulation).
+
+        Faces of size >= 3 are allowed, because the mesh dual to a spine is
+        polygonal: its faces are dual to the spine's vertices, so a spine vertex
+        of valence k gives a k-gon, and the canonical Delaunay decomposition is
+        not always a triangulation (cocircular blocks are polygonal).  A face
+        that visits a vertex twice is still refused -- it is not a disc with
+        distinct corners, and no flat metric can be put on it.
 
         Returns a dict of counts.  Raises ValueError on a defect.  Every
         condition here fails for some corrupted input (the tests corrupt one
         deliberately), so a pass is evidence.
         """
-        if len(self.faces) < 4:
-            raise ValueError("fewer than four faces cannot triangulate S^2")
+        if len(self.faces) < 2:
+            raise ValueError("fewer than two faces cannot decompose S^2")
         V = len(self.points)
         directed = defaultdict(int)
         for f in self.faces:
-            if len(set(f)) != 3:
+            n = len(f)
+            if n < 3:
+                raise ValueError(f"face {f} has fewer than three corners")
+            if len(set(f)) != n:
                 raise ValueError(f"degenerate face {f}: repeated vertex")
-            for k in range(3):
-                directed[(f[k], f[(k + 1) % 3])] += 1
+            for k in range(n):
+                directed[(f[k], f[(k + 1) % n])] += 1
         for (i, j), n in directed.items():
             if n != 1:
                 raise ValueError(f"directed edge {(i, j)} used {n} times")
@@ -204,8 +220,9 @@ class Mesh:
         # a manifold at that vertex
         around = defaultdict(list)
         for f in self.faces:
-            for k in range(3):
-                around[f[k]].append((f[(k + 1) % 3], f[(k + 2) % 3]))
+            n = len(f)
+            for k in range(n):
+                around[f[k]].append((f[(k + 1) % n], f[(k - 1) % n]))
         for v, link in around.items():
             succ, pred = {}, {}
             for (b, c) in link:
@@ -672,6 +689,186 @@ def ribbon_map_from_spine(spine, marking, points):
     return RibbonMap(pts, rot, name="dual(spine)")
 
 
+def _hull_2d(pts):
+    """Convex hull of a 2D point list, counterclockwise, no collinear points."""
+    pts = sorted(set(pts))
+    if len(pts) < 3:
+        return list(pts)
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def delaunay_faces(points, tol=1e-9):
+    """The Delaunay decomposition of `points` on the sphere, as polygons.
+
+    On the sphere with the chordal metric the Voronoi cells are the normal cones of
+    the convex hull, so the Delaunay faces are the hull's facets.  They are
+    *grouped into maximal coplanar blocks*, because cocircular points give a
+    polygonal face and choosing a diagonal inside it would be a non-canonical act
+    -- the author's flag of 2026-10-28: "the canonical Delaunay decomposition is
+    not always a triangulation".
+
+    A block is computed as the 2-D convex hull of the points lying on a supporting
+    plane, not as a union of the plane's triples: the C(k,3) triples of a coplanar
+    k-gon tile it more than once (a quadrilateral's four triples are its two
+    triangulations), so a triangle union would double-count and its "boundary"
+    would not close.
+
+    Faces are returned as tuples of vertex indices, oriented consistently outward.
+    """
+    v = np.array([to_vector(p) for p in points])
+    n = len(points)
+    if n < 4:
+        raise ValueError("three points do not determine a Delaunay decomposition")
+    planes = {}
+    for (i, j, k) in itertools.combinations(range(n), 3):
+        normal = np.cross(v[j] - v[i], v[k] - v[i])
+        norm = float(np.linalg.norm(normal))
+        if norm < tol:
+            continue                                  # collinear triple
+        normal = normal / norm
+        off = float(normal @ v[i])
+        s = v @ normal - off
+        others = [l for l in range(n) if l not in (i, j, k)]
+        if np.all(s[others] >= -1e-12):
+            key, nn, oo = (tuple(np.round(normal, 8)), round(off, 8)), normal, off
+        elif np.all(s[others] <= 1e-12):
+            key, nn, oo = (tuple(np.round(-normal, 8)), round(-off, 8)), -normal, -off
+        else:
+            continue                                  # not a supporting plane
+        planes.setdefault(key, (nn, oo))
+    out = []
+    for (nn, oo) in planes.values():
+        on = [l for l in range(n) if abs(float(v[l] @ nn) - oo) < 1e-9]
+        if len(on) < 3:
+            continue
+        u = np.array([1.0, 0.0, 0.0])
+        if abs(u @ nn) > 0.9:
+            u = np.array([0.0, 1.0, 0.0])
+        u = u - (u @ nn) * nn
+        u /= np.linalg.norm(u)
+        w = np.cross(nn, u)
+        flat = [(round(float(v[l] @ u), 12), round(float(v[l] @ w), 12), l) for l in on]
+        hull = _hull_2d([(a, b) for (a, b, _l) in flat])
+        index = {(a, b): l for (a, b, l) in flat}
+        poly = [index[h] for h in hull]
+        # orient outward: signed area as seen along -nn must be positive
+        area = 0.0
+        for t in range(len(poly)):
+            x1, y1 = [q for q in flat if q[2] == poly[t]][0][:2]
+            x2, y2 = [q for q in flat if q[2] == poly[(t + 1) % len(poly)]][0][:2]
+            area += x1 * y2 - x2 * y1
+        out.append(tuple(poly) if area > 0 else tuple(reversed(poly)))
+    return orient_faces(points, out)
+
+
+def voronoi_spine(points, name="voronoi"):
+    """The Voronoi spine: the dual of the Delaunay decomposition.
+
+    A spine of S^2 - P: its vertices are the Delaunay faces (so a cocircular block
+    is one vertex, of valence the block's size), its edges are the Delaunay edges,
+    and its faces are the points of P -- one disc per puncture, which is what makes
+    it a spine rather than just a graph.  Returned as a `RibbonGraph`, so it plugs
+    into `lift.pullback_ve` and the rest of the engine's spine machinery.
+
+    Delaunay is conformally invariant (the author, 2026-10-28: the empty-circle
+    formulation is unchanged by Mobius maps, and one can see the same thing through
+    3-dimensional hyperbolic geometry), so the *combinatorics* is the whole content
+    -- which is why this builds the rotation system directly rather than going
+    through `RibbonMap.dual()`, whose vertices are placed at face centroids.  A
+    block containing an antipodal pair has a centroid at the origin, and that
+    placement is both meaningless and a division by zero; the spine does not want
+    positions at all.
+
+    (The ribbon-graph *dual* of a session's spine is a different object: its faces
+    are that spine's vertices, so for a bouquet of loops it has a single face and
+    is a spine of the sphere minus one point, not minus P.  The spine adapted to a
+    configuration is this one.)
+    """
+    from .ribbons import B, F, RibbonGraph
+    faces = delaunay_faces(points)
+    edge_to_faces = defaultdict(list)
+    for idx, f in enumerate(faces):
+        n = len(f)
+        for k in range(n):
+            edge_to_faces[edge_key(f[k], f[(k + 1) % n])].append(idx)
+    rot = {}
+    edge_labels = {}
+    for idx, f in enumerate(faces):
+        n = len(f)
+        nbrs = []
+        for k in range(n):
+            # This is the PRIMAL Delaunay edge.  It is the label a lifted edge
+            # must carry so that its length can be inherited from the base.
+            # Using edge_key(idx, neighbour) here would instead label by the two
+            # dual endpoints and silently attach the wrong metric to the lift.
+            e = edge_key(f[k], f[(k + 1) % n])
+            others = [j for j in edge_to_faces[e] if j != idx]
+            if len(others) != 1:
+                raise ValueError(
+                    f"the Delaunay decomposition is not a cell decomposition:"
+                    f" edge {e} is in {len(others) + 1} faces")
+            nbrs.append(others[0])
+            edge_labels[(idx, others[0])] = e
+        # the dual reverses the orientation, as in `RibbonMap.dual`
+        rot[idx] = list(reversed(nbrs))
+    flowers = {}
+    for v, ns in rot.items():
+        darts = []
+        for u in ns:
+            label = edge_labels[(v, u)]
+            # Edge orientation is a dual-graph convention (smaller face index
+            # to larger); the label itself belongs to the primal point set and
+            # is unrelated to the dual endpoint indices.
+            darts.append((label, F if v < u else B))
+        flowers[v] = tuple(darts)
+    return RibbonGraph(flowers)
+
+
+def voronoi_face_points(spine, n_points=None):
+    """The puncture label enclosed by each Voronoi-spine face.
+
+    A face walk consists of the duals of all Delaunay edges incident with one
+    primal point.  The common endpoint of those edge labels therefore identifies
+    the puncture intrinsically; canonical ribbon-face ordering must never be
+    mistaken for the numbering of `points`.
+    """
+    labels = {edge for walk in spine.faces() for (edge, _ori) in walk}
+    points = set(range(n_points)) if n_points is not None else {
+        i for edge in labels for i in edge}
+    out = {}
+    used = {}
+    for face, walk in enumerate(spine.faces()):
+        edges = [dart[0] for dart in walk]
+        common = set(edges[0])
+        for edge in edges[1:]:
+            common.intersection_update(edge)
+        if len(common) != 1 or not points.issuperset(common):
+            raise ValueError(f"Voronoi face {face} does not enclose one puncture")
+        point = next(iter(common))
+        if point in used:
+            raise ValueError(
+                f"Voronoi faces {used[point]} and {face} both enclose {point}")
+        out[face] = point
+        used[point] = face
+    if set(used) != points:
+        raise ValueError(f"punctures without a Voronoi face: {points - set(used)}")
+    return out
+
+
 def sphere_triangulation(points):
     """A triangulation of S^2 with the given points as its vertex set: the
     faces of the convex hull of the corresponding unit vectors.
@@ -721,13 +918,16 @@ def orient_faces(points, faces):
     faces = [tuple(f) for f in faces]
     edge_to_faces = defaultdict(list)
     for fi, f in enumerate(faces):
-        for k in range(3):
-            edge_to_faces[edge_key(f[k], f[(k + 1) % 3])].append(fi)
+        for k in range(len(f)):
+            edge_to_faces[edge_key(f[k], f[(k + 1) % len(f)])].append(fi)
     for e, fl in edge_to_faces.items():
         if len(fl) > 2:
             raise ValueError(f"edge {e} is in {len(fl)} faces: not a surface")
     def oriented(f, flip):
-        return f if not flip else (f[0], f[2], f[1])
+        if not flip:
+            return f
+        # reverse a k-gon: keep the first corner, reverse the rest
+        return (f[0],) + tuple(reversed(f[1:]))
     flip = [None] * len(faces)
     for seed in range(len(faces)):
         if flip[seed] is not None:
@@ -737,13 +937,13 @@ def orient_faces(points, faces):
         while queue:
             fi = queue.pop()
             f = oriented(faces[fi], flip[fi])
-            for k in range(3):
-                i, j = f[k], f[(k + 1) % 3]
+            for k in range(len(f)):
+                i, j = f[k], f[(k + 1) % len(f)]
                 for fj in edge_to_faces[edge_key(i, j)]:
                     if fj == fi or flip[fj] is not None:
                         continue
                     g = faces[fj]
-                    directed = [(g[t], g[(t + 1) % 3]) for t in range(3)]
+                    directed = [(g[t], g[(t + 1) % len(g)]) for t in range(len(g))]
                     flip[fj] = (i, j) in directed
                     queue.append(fj)
     out = [oriented(faces[fi], bool(flip[fi])) for fi in range(len(faces))]
@@ -860,11 +1060,11 @@ def mesh_defects(points, faces):
     v = np.array([to_vector(p) for p in points])
     bad_faces, bad_edges = [], []
     for f in faces:
-        for x in range(3):
-            for y in range(x + 1, 3):
+        for x in range(len(f)):
+            for y in range(x + 1, len(f)):
                 if np.linalg.norm(v[f[x]] + v[f[y]]) < 1e-6:
                     bad_faces.append(f)
-    E = {edge_key(f[k], f[(k + 1) % 3]) for f in faces for k in range(3)}
+    E = {edge_key(f[k], f[(k + 1) % len(f)]) for f in faces for k in range(len(f))}
     for (i, j) in E:
         if np.linalg.norm(v[i] + v[j]) < 1e-6:
             bad_edges.append((i, j))
@@ -917,7 +1117,11 @@ def subdivide_face_centres(mesh):
         centre = face_sample(vectors, f)
         points.append(to_point(centre))
         k = len(points) - 1
-        faces.extend([(f[0], f[1], k), (f[1], f[2], k), (f[2], f[0], k)])
+        n = len(f)
+        # the star of the centre: one triangle per side, for a face of any size.
+        # On a k-gon this is the barycentric subdivision that makes it a
+        # triangulation -- and on a triangle it is the 1 -> 3 refinement.
+        faces.extend([(f[i], f[(i + 1) % n], k) for i in range(n)])
     out = Mesh(points, faces, name=f"{mesh.name}+c")
     out.validate()
     return out
@@ -944,6 +1148,13 @@ def subdivide(mesh, project=True):
         mid = mid / norm if project else mid
         mids[e] = len(points)
         points.append(to_point(mid))
+    for f in mesh.faces:
+        if len(f) != 3:
+            raise ValueError(
+                f"edge-midpoint subdivision is a 1 -> 4 operation on triangles;"
+                f" face {f} has {len(f)} corners.  Call `subdivide_face_centres`"
+                " first -- one star subdivision turns a polygonal face into"
+                " triangles -- or use `refine_mesh`, which does it automatically.")
     faces = []
     for (i, j, k) in mesh.faces:
         ij, jk, ki = mids[edge_key(i, j)], mids[edge_key(j, k)], mids[edge_key(i, k)]
@@ -1454,28 +1665,45 @@ def lift_by_edges(mesh, f):
             raise DegenerateLift(
                 f"base face {T} has two critical corners, so its edge between"
                 " them lifts to a bigon")
-    faces = set()
-    for T in base.faces:
-        for i in range(3):
-            v, v1, v2 = T[i], T[(i + 1) % 3], T[(i + 2) % 3]
-            if v in single:
-                continue
-            e1, e2 = edge_key(v, v1), edge_key(v, v2)
-            for q in over[v]:
-                if local_degree[q] != 1:
+    # The face set depends on the arc pairing only through `ends`, so it is built
+    # by a function that takes a pairing -- which lets the pairing be *searched*
+    # against the face count when the analytic arcs get one edge wrong (see below).
+    def assemble(ends_):
+        faces = set()
+        for T in base.faces:
+            for i in range(3):
+                v, v1, v2 = T[i], T[(i + 1) % 3], T[(i + 2) % 3]
+                if v in single:
                     continue
-                r1 = _the_end(ends[(q, e1)])
-                r2 = _the_end(ends[(q, e2)])
-                if r1 is None or r2 is None or len({q, r1, r2}) != 3:
-                    raise DegenerateLift(
-                        f"the sector at lifted vertex {q} over base face {T}"
-                        " is degenerate")
-                faces.add(frozenset((q, r1, r2)))
+                e1, e2 = edge_key(v, v1), edge_key(v, v2)
+                for q in over[v]:
+                    if local_degree[q] != 1:
+                        continue
+                    r1 = _the_end(ends_[(q, e1)])
+                    r2 = _the_end(ends_[(q, e2)])
+                    if r1 is None or r2 is None or len({q, r1, r2}) != 3:
+                        return None
+                    faces.add(frozenset((q, r1, r2)))
+        return faces
+
+    def ends_of(pairmap):
+        out = defaultdict(list)
+        for key, plist in pairmap.items():
+            for (u, v) in plist:
+                out[(u, key)].append((v, key))
+                out[(v, key)].append((u, key))
+        return out
+
     expected_faces = f.deg * len(base.faces)
-    if len(faces) != expected_faces:
-        raise DegenerateLift(
-            f"{len(faces)} lifted faces, expected deg f * base faces ="
-            f" {expected_faces}")
+    faces = assemble(ends)
+    if faces is None or len(faces) != expected_faces:
+        faces = _search_pairing(base, edge_pairs, ends_of, assemble,
+                                expected_faces)
+        if faces is None:
+            raise DegenerateLift(
+                f"no pairing of the lifted arcs gives deg f * base faces ="
+                f" {expected_faces}; the analytic arcs could not be trusted and"
+                " the search over single and double edge flips found nothing")
     fl = orient_faces(points, [tuple(sorted(u)) for u in faces])
     out = Mesh([_mp_apply(Minv, z) for z in points], fl, source=source,
                name=f"liftE({mesh.name})")
@@ -1484,6 +1712,43 @@ def lift_by_edges(mesh, f):
     return out, {"faces": stats["F"], "vertices": stats["V"],
                  "edges": stats["E"], "chart": M,
                  "discretisation_error": err}
+
+
+def _search_pairing(base, edge_pairs, ends_of, assemble, expected_faces):
+    """Find a valid arc pairing by flipping one or two edges at a time.
+
+    The arcs are identified analytically (a preimage of the edge's midpoint and
+    its continuation to the ends), and that is occasionally wrong on one edge --
+    measured at a generic starting configuration for the rabbit, where it gave 48
+    lifted faces against the 44 that deg f * base faces requires.  Rather than
+    trust or discard the analytic answer, the alternatives are enumerated and
+    judged by the two structural checks that cannot both be fooled: every base
+    face must lift to exactly deg f faces, and the result must be a triangulated
+    sphere.  Only two-arc edges have an alternative pairing (the single swap), and
+    the search is bounded to one or two such flips.
+    """
+    import itertools
+    keys = [k for k, pl in edge_pairs.items() if len(pl) == 2]
+    if len(keys) > 200:
+        return None
+    for size in (1, 2):
+        for chosen in itertools.combinations(keys, size):
+            trial = {k: list(v) for k, v in edge_pairs.items()}
+            for k in chosen:
+                (u1, v1), (u2, v2) = trial[k]
+                trial[k] = [(u1, v2), (u2, v1)]
+            faces = assemble(ends_of(trial))
+            if faces is None or len(faces) != expected_faces:
+                continue
+            try:
+                Mesh(base.points, orient_faces(base.points,
+                                               [tuple(sorted(x)) for x in faces])).validate()
+            except ValueError:
+                continue
+            for k in chosen:
+                edge_pairs[k] = trial[k]
+            return faces
+    return None
 
 
 def _the_end(lst):
@@ -1505,8 +1770,10 @@ def _discretisation_error(base, lifted):
     flat = congruent_lengths(base, lifted)
     vecs = lifted.vectors()
     total = 0.0
-    for (i, j, k) in lifted.faces:
-        for (u, w) in ((i, j), (j, k), (i, k)):
+    for face in lifted.faces:
+        n = len(face)
+        for k in range(n):
+            u, w = face[k], face[(k + 1) % n]
             chord = float(np.linalg.norm(vecs[u] - vecs[w]))
             total += abs(np.log(chord) - np.log(flat[edge_key(u, w)]))
     return total
@@ -1539,11 +1806,9 @@ def congruent_lengths(base, lifted):
     base_len = base.chordal_lengths()
     known = {}
     for lf in lifted.faces:
-        bs = [lifted.source[i][0] for i in lf]
-        # each lifted face is congruent to the base face on its sources; the
-        # base face is the one whose vertex set is those three sources
-        for k in range(3):
-            i, j = lf[k], lf[(k + 1) % 3]
+        # each lifted face is congruent to the base face on its sources
+        for k in range(len(lf)):
+            i, j = lf[k], lf[(k + 1) % len(lf)]
             bi, bj = lifted.source[i][0], lifted.source[j][0]
             ell = base_len[edge_key(bi, bj)]
             key = edge_key(i, j)

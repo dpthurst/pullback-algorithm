@@ -89,6 +89,14 @@ class RibbonGraph:
     def tgt(self, dart: Dart):
         return self._dart_vertex[rev(dart)]
 
+    def tail(self, dart: Dart):
+        """Source of the dart (spines.distinct alias)."""
+        return self.src(dart)
+
+    def head(self, dart: Dart):
+        """Target of the dart (spines.distinct alias)."""
+        return self.tgt(dart)
+
     def alpha(self, dart: Dart) -> Dart:
         """Reverse the dart."""
         return rev(dart)
@@ -192,7 +200,13 @@ class RibbonGraph:
 
 def _fmt(dart: Dart) -> str:
     label, ori = dart
-    return str(label) if ori == F else str(label).upper()
+    if ori == F:
+        return str(label)
+    if isinstance(label, str) and len(label) == 1 and label.isalpha():
+        return label.upper()
+    # str(tuple/int).upper() is a no-op, which used to hide dart orientation in
+    # error messages on the tuple-labelled lifted graphs.
+    return f"{label}^-1"
 
 
 def parse_dart(token: str) -> Dart:

@@ -194,5 +194,53 @@ class TestSlitRationalMap(unittest.TestCase):
         self.assertEqual(len(pts), 4)
 
 
+class TestIMGGoldenMaps(unittest.TestCase):
+    """Bartholdi's IMG table entries [4,15,1]/[4,15,2] as further test beds.
+
+    These are quadratic *rational* maps (f(infinity) = 0, not a fixed totally
+    ramified pole), with exact algebraic coefficients and a critical 4-cycle,
+    hyperbolic and with f|_P a permutation.  That is the geometry no previous
+    example had: the two convergence-test maps we already had are the rabbit
+    (polynomial) and a Mobius conjugate of it.
+    """
+
+    def test_the_data_matches_the_table(self):
+        from pullback.discrete import pcf_data
+        from pullback import thurston as th2
+        maps = th2.img_golden_maps()
+        self.assertEqual([m[0] for m in maps], ["img-4.15.1", "img-4.15.2"])
+        phi2 = (3 + mp.sqrt(5)) / 2
+        # [4,15,1]: P = {0, 1, phi^2, infinity} on a single 4-cycle
+        name1, f1, c1 = maps[0]
+        d1 = pcf_data(f1)
+        self.assertEqual(len(d1["points"]), 4)
+        self.assertEqual(d1["degrees"], [1, 1, 1, 1, 2, 2])
+        self.assertTrue(mp.isfinite(f1.f_infinity()))   # not a polynomial
+        pts1 = [complex(p) if mp.isfinite(p) else None for p in d1["points"]]
+        self.assertIn(complex(0), pts1)
+        self.assertIn(complex(1), pts1)
+        self.assertTrue(any(p is not None and abs(p - float(phi2)) < 1e-12 for p in pts1))
+        # [4,15,2]: P = {0, 1/phi^2, 1, infinity}
+        name2, f2, c2 = maps[1]
+        d2 = pcf_data(f2)
+        pts2 = [complex(p) if mp.isfinite(p) else None for p in d2["points"]]
+        self.assertTrue(any(p is not None and abs(p - float(1 / phi2)) < 1e-12 for p in pts2))
+        for _name, _f, _c in maps:
+            d = pcf_data(_f)
+            # f|_P is a permutation: the labelled diagonal copy exists
+            self.assertEqual(sorted(d["dynamics"].values()), [0, 1, 2, 3])
+            # and it is one 4-cycle: dynamics has a single orbit of length 4
+            self.assertEqual(len({d["dynamics"][i] for i in range(4)}), 4)
+
+    def test_the_maps_work_with_the_discrete_step(self):
+        from pullback.discrete import pcf_data, pullback_step
+        for name, f, c in th.img_golden_maps():
+            d = pcf_data(f)
+            res = pullback_step(d["points"], d["dynamics"], f, refine=0,
+                                maxit=200, tol=1e-13)
+            self.assertLess(res["residual"], 1e-9, msg=name)
+            self.assertLess(res["step_error"], 0.5, msg=name)
+
+
 if __name__ == "__main__":
     unittest.main()

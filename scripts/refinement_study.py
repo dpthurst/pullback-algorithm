@@ -18,29 +18,32 @@ sphere), applied to the base mesh *before* the pullback.  So the table below is:
 for each refinement level, the step error at the fixed point, and the ratio
 between successive errors, which is the measured order of convergence.
 
-**The measured answer (2026-10-26): no.**  The step error is constant in the
-refinement (ratio 1.00 at every level for both maps), while the round
-realisation converges (residual ~1e-12).  The reason is structural, not numerical:
+**The measured answer (2026-10-28, corrected): yes, it converges.**  Step error at
+the rabbit's known fixed point, with the edge-midpoint refinement:
 
-* a vertex scaling multiplies every length at a vertex by the same factor, so
-  *cone angles are invariants of discrete conformal equivalence*;
-* pulling a flat metric back through a cover multiplies the cone angle at a lift
-  by its local degree, so the lifted metric has angle e * theta_a at a critical
-  preimage, tending to 4 pi as the mesh refines;
-* the chordal metric of the analytic preimages has angle < 2 pi at every vertex.
+    refine 0: 1.2277e-01     refine 1: 3.7865e-02 (ratio 3.24)
+    refine 2: 1.3812e-02 (ratio 2.74)
 
-So the lifted metric and the analytic metric are never discretely conformally
-equivalent, at any refinement, and the round realisation of the lifted metric is
-a configuration that does not depend on the mesh -- which is exactly what the
-table shows.  The step as built converges to the round realisation of the
-pulled-back *cone* metric, not to sigma.
+Order ~1.5-1.7, so the scheme behaves.  (Rabbit-by-Moebius fails at refine 1 on the
+known arc-pairing fragility, not on the scheme.)
 
-What the scheme needs is the prescribed-angle (hyper-ideal) treatment: a cone
-angle above 2 pi is a vertex *outside* the sphere, and the round realisation is
-then a hyper-ideal polyhedron.  That is Bobenko-Dimitrov-Sechelmann, *Discrete
-uniformization of polyhedral surfaces ... and branched covers over the sphere
-via hyper-ideal circle patterns* (DCG 57 (2017)) -- Springborn's bibliography
-entry [5], already flagged in the plan as the closest paper to this setting.
+**What this replaces, and why the earlier answer was wrong.**  The first version of
+this study subdivided by inserting a vertex in each face at `mesh.face_sample` --
+whose weights are deliberately skewed, because a symmetric centroid degenerates on
+a face with an antipodal pair.  Iterated, the skew compounds, thin triangles pile up
+at the corners, and the cone angle at each puncture *diverges*: measured 4.53, 7.07,
+9.61, 12.08 rad over three levels.  With that refinement the step error was constant
+(ratio 1.00).  It was constant because the meshes were not converging to the round
+metric at all, not because of anything about the scheme.
+
+That mistake came bundled with a false claim, now retracted: that cone angles are
+invariants of discrete conformal equivalence.  They are not -- a vertex scaling
+l~_ij = exp((u_i + u_j)/2) l_ij changes every triangle angle (measured: an angle
+moving 18.7 degrees, another 43.6 degrees, for u = (0, 0.9, -0.4)) -- and making the
+cone angles all 2*pi is precisely what discrete uniformization does.  The correct
+refinement converges them to 2*pi at O(h^2): deficits 5.10e-01, 1.39e-01, 3.56e-02,
+8.97e-03.  `tests/test_mesh.py::TestRefinementConverges` is the regression test for
+both the false claim and the divergent refinement.
 
 Usage:  python3 scripts/refinement_study.py [--refine 2] [--maxit 200]
 """
@@ -65,6 +68,11 @@ def targets():
     out = [("rabbit", th.rabbit_map(), "polynomial, hyperbolic: a convergence target"),
            ("rabbit-by-mobius", th.strictly_rational_rabbit()["map"],
             "strictly rational, hyperbolic: a convergence target")]
+    # Bartholdi's IMG table entries [4,15,1]/[4,15,2] (gap/examples.gi): two
+    # strictly rational quadratic maps with a critical 4-cycle, exact algebraic
+    # coefficients, |P| = 4 and f|_P a permutation
+    for name, f, c in th.img_golden_maps():
+        out.append((name, f, "strictly rational, critical 4-cycle, exact surd data"))
     return out
 
 
@@ -83,7 +91,7 @@ def main():
     args = ap.parse_args()
 
     print("refinement study: the discrete pullback step at a known fixed point")
-    print("refine = face-centre subdivisions of the BASE mesh, before pullback")
+    print("refine = edge-midpoint subdivisions of the BASE mesh, before pullback")
     print()
     for name, f, note in targets():
         d = pcf_data(f)

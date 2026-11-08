@@ -11,8 +11,7 @@
 
 from __future__ import annotations
 
-from .ribbons import F, B, rev
-from .portrait import tighten
+from .ribbons import F, reduce_chain
 
 
 def is_connected(graph) -> bool:
@@ -88,15 +87,18 @@ def _tree_path(graph, tree, u, v):
     return tuple(reversed(path))  # order u -> v
 
 
-def rose_words(phi, tree0, tree1, gens1):
-    """Images of the source's generator loops as words in the target
-    generators.  A generator edge e of the source (after choosing a
-    spanning tree T_1 and basepoint) represents the loop
-    t_base,src(e) . e . t_tgt(e),base; its image is the phi-image of
-    that composite, with target-tree letters deleted and the result
-    freely reduced."""
+def rose_words(phi, tree0, tree1, gens1, base_v=None):
+    """Based images of the source's generator loops in the target basis.
+
+    A generator edge e of the source (after choosing a spanning tree T_1 and
+    basepoint `base_v`) represents the loop t_base,src(e) . e . t_tgt(e),base.
+    Return the phi-image of that composite, with target-tree letters deleted
+    and the result freely (NOT cyclically) reduced.  Changing the basepoint
+    changes this based homomorphism by a conjugacy that cannot be discarded.
+    """
     src_g = phi.source
-    base_v = src_g.vertices()[0]
+    if base_v is None:
+        base_v = src_g.vertices()[0]
     words = []
     for e in gens1:
         s, t = src_g.edges[e]
@@ -106,7 +108,7 @@ def rose_words(phi, tree0, tree1, gens1):
         full = []
         for d in path:
             full.extend(phi.image_dart(d))
-        w = tighten(tuple(x for x in full if x[0] not in tree0))
+        w = reduce_chain(tuple(x for x in full if x[0] not in tree0))
         words.append(w)
     return words
 

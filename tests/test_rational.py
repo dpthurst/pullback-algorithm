@@ -51,5 +51,45 @@ class TestPortraitDegrees(unittest.TestCase):
                 self.assertEqual(sum(degs), (len(num) - 1 if len(num) >= len(den) else len(den) - 1) * n)
 
 
+class TestPostcriticalOrbitThroughInfinity(unittest.TestCase):
+    """The forward closure must continue PAST infinity, not stop at it.
+
+    The old `postcritical_set` broke at the first infinite value and threw away
+    the rest of every critical orbit that passes through infinity.  For strictly
+    rational maps -- whose critical orbits pass through infinity constantly --
+    that made perfectly PCF maps look like "not postcritically finite" further
+    downstream.  Measured on IMG's table: before the fix, [3,5] gave {0, inf};
+    after, {0, 1, inf}.
+    """
+
+    def test_an_orbit_through_infinity_is_not_truncated(self):
+        # ((z-1)/z)^2: critical points 0 (double pole) and 1 (double zero).
+        # The orbit of 0 is 0 -> infinity -> 1 -> 0, so P = {0, 1, infinity}.
+        numlen = False
+        from pullback.discrete import pcf_data
+        den = [1, 0, 0]
+        num = [1, -2, 1]
+        f = RationalMap(num, den)
+        # postcritical_set returns the FINITE points plus a flag for infinity
+        P, has_inf, _tol = f.postcritical_set(depth=64)
+        self.assertEqual(len(P), 2)
+        self.assertTrue(has_inf)
+        self.assertIn(mp.mpc(0), P)
+        self.assertIn(mp.mpc(1), P)
+        d = pcf_data(f)
+        # and the dynamics is a 3-cycle, a permutation, not a truncation
+        self.assertEqual(sorted(d["dynamics"].values()), [0, 1, 2])
+
+    def test_the_golden_maps_keep_a_complete_four_cycle(self):
+        # f(z) = 1/(cz+1)^2 with c = (-3+sqrt 5)/2: P is the 4-cycle
+        # 0 -> 1 -> phi^2 -> infinity -> 0, and |f^-1(P)| = 6
+        from pullback.discrete import pcf_data
+        from pullback import thurston as th
+        for name, f, c in th.img_golden_maps():
+            d = pcf_data(f)
+            self.assertEqual(len(d["points"]), 4, msg=name)
+            self.assertEqual(sorted(d["dynamics"].values()), [0, 1, 2, 3])
+
+
 if __name__ == "__main__":
     unittest.main()

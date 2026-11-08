@@ -117,6 +117,66 @@ def single_preimage_vertices(points, f):
             if len(f.preimage_with_degrees(p)) == 1}
 
 
+def refine_mesh(mesh):
+    """One refinement step that converges to the round sphere: the 1 -> 4
+    subdivision by edge midpoints, projected onto the sphere.
+
+    This is the refinement that matters, and getting it wrong was expensive.  An
+    earlier version subdivided by inserting a vertex in each face at
+    `mesh.face_sample` -- which uses deliberately *skewed* weights, because a
+    symmetric centroid degenerates on a face containing an antipodal pair.  The
+    skew is fine for one insertion and fatal when iterated: the new vertices sit
+    near a corner, thin triangles pile up there, and the cone angle at each
+    puncture *diverges* instead of tending to 2*pi.
+
+    Measured on the rabbit's postcritical set, cone angle at the four punctures
+    after k face-centre refinements:
+        4.53, 7.07, 9.61, 12.08 rad   (one of them, k = 0..3)
+    and after k edge-midpoint refinements:
+        4.53, 5.74, 6.13, 6.24 rad,  deficits falling by ~3.9 per level
+    The correct refinement converges to 2*pi at O(h^2).  The wrong one diverges,
+    and with it every conclusion drawn from the refinement study -- a constant
+    step error under the wrong refinement said nothing about the scheme.
+
+    **Why edge midpoints and not barycentric subdivision** (measured 2026-10-28,
+    `.scratch/bary.py` is the witness).  Barycentric looks attractive -- it needs a
+    face interior point, and it refines faster per level -- and it is worse on
+    every count that matters here:
+
+    * *It stops converging.*  Worst puncture-angle deficit over four levels, edge
+      midpoints: 1.752, 5.403e-01, 1.489e-01, 3.845e-02 (ratios 3.24, 3.63, 3.87,
+      heading for the O(h^2) value 4).  Barycentric: 1.752, 3.417e-01, 1.596e-01,
+      3.412e-01 -- it stalls and then *worsens*.
+    * *It degrades triangle shape.*  Smallest triangle angle: edge midpoints
+      3.28, 3.09, 3.04, 3.03 degrees (it inherits the coarse mesh's worst angle and
+      keeps it); barycentric 3.28, 4.23, 1.61, 0.69 -- slivers, compounding, which
+      is the mechanism behind the stalling.  In *flat* 1 -> 4 subdivision every
+      corner child is similar to its parent, so all angles are preserved exactly;
+      what moves the puncture angles is only the projection of the midpoints onto
+      the sphere, i.e. the mesh converging to the round surface.
+    * *It costs more for less.*  Vertices per level: 16, 58, 226, 898 against 16,
+      86, 506, 3026 -- 3.4x more at level 3 for a worse answer.  One pullback step
+      at level 1: barycentric 5.52e-02 at V=86 and 461 s, edge midpoints 3.79e-02
+      at V=58 and 8 s.
+    * *It needs an interior point*, hence a robustness hack for faces containing an
+      antipodal pair -- and a hack of exactly that kind is what caused the divergent
+      refinement above.  Halving an edge has no such failure mode (only a diameter,
+      which `base_mesh` removes).
+    """
+    # a polygonal face (the mesh dual to a spine is polygonal) is triangulated by
+    # one star subdivision before the 1 -> 4 refinement can start; both are ribbon
+    # operations and the star preserves the rotation at the old vertices
+    if any(len(f) != 3 for f in mesh.faces):
+        mesh = msh.subdivide_face_centres(mesh)
+    try:
+        return msh.subdivide(mesh)
+    except ValueError:
+        # a diameter cannot be halved: fall back to the face-centre refinement,
+        # which is valid but converges poorly.  `base_mesh` breaks diameters, so
+        # this is a safety net, not the intended path.
+        return msh.subdivide_face_centres(mesh)
+
+
 def base_mesh(points, f, refine=0, faces=None, max_insert=40, spine=None,
               marking=None):
     """The base mesh: `points` as the first vertices, a triangulated sphere,
@@ -181,7 +241,7 @@ def base_mesh(points, f, refine=0, faces=None, max_insert=40, spine=None,
     m = msh.Mesh(pts, faces, name="base")
     m.validate()
     for _ in range(refine):
-        m = msh.subdivide_face_centres(m)
+        m = refine_mesh(m)
     m.inserted = inserted
     # The mesh is a ribbon graph: it carries the rotation system, and the
     # refinement above preserved it.  When the spine is given, check the mesh's

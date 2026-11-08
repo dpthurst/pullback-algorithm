@@ -198,41 +198,41 @@ class RationalMap:
         return z
 
     def postcritical_set(self, depth=12, tol=mp.mpf("1e-12")):
-        """Closure of the critical orbits, including infinity; returns
-        (finite points, has_infinity, tolerance used)."""
+        """The postcritical set P = forward closure of the critical orbits.
+
+        Returns (finite points, has_infinity, tolerance used).
+
+        An orbit is followed *through infinity*: if the critical orbit reaches
+        infinity, its image f(infinity) may well be finite, and the orbit must
+        continue there or the set is silently truncated.  The old version broke
+        at the first infinite value, which threw away the rest of every such
+        orbit -- and for a *strictly rational* map, whose critical orbit passes
+        through infinity much more often than for a polynomial, that looks like a
+        spurious "map is not postcritically finite" failure further downstream.
+        Measured on IMG's table entry [3,5], ((z-1)/z)^2: the old code returned
+        {0, infinity}, the correct set being {0, 1, infinity}.
+        """
         pts = []
         has_inf = False
         starts = self.critical_points()
-        orbits = []
+        if self.local_degree_infinity() > 1:
+            starts.append(mp.inf)
         for z0 in starts:
-            # P is the FORWARD orbit: f^n(z0), n >= 1 (a critical point
-            # is in P only if it recurs, e.g. superattracting cycles)
-            orbit = []
-            z = self(mp.mpc(z0))
+            if z0 == mp.inf:
+                z = self.f_infinity()
+            else:
+                z = self(mp.mpc(z0))
             for _ in range(depth):
                 if not mp.isfinite(z):
-                    orbit.append(mp.inf)
-                    break
-                orbit.append(mp.mpc(z))
-                z = self(z)
-            orbits.append(orbit)
-        if self.local_degree_infinity() > 1:
-            orbit = []
-            z = self.f_infinity()
-            for _ in range(depth):
-                if z == mp.inf:
-                    orbit.append(mp.inf)
-                    break
-                orbit.append(mp.mpc(z))
-                z = self(z)
-            orbits.append(orbit)
-        for orb in orbits:
-            for z in orb:
-                if z == mp.inf:
+                    if has_inf:
+                        break
                     has_inf = True
+                    z = self.f_infinity()
                     continue
-                if not any(abs(z - y) < tol for y in pts):
-                    pts.append(z)
+                if any(abs(z - y) < tol for y in pts):
+                    break
+                pts.append(mp.mpc(z))
+                z = self(z)
         return pts, has_inf, tol
 
     def portrait_degrees(self):

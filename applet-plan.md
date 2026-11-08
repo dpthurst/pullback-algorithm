@@ -696,23 +696,27 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      these and insert vertices until they hold (measured: rabbit 12, slit map 6); the step itself
      still stops at the cyclic order at a lifted vertex, which cannot be read off the round
      positions — detail and the next step are in `notes/thurston-pullback.md`.
-     *The refinement study, run (2026-10-26): the naive scheme does not converge, and why.*
-     `scripts/refinement_study.py` runs the discrete step at a known fixed point (the rabbit, and the
-     strictly rational rabbit) under face-centre refinement of the base mesh. Measured: the step error
-     is constant in the refinement (1.228e-01 at levels 0, 1 and 2 for the rabbit; 2.279 for the
-     rabbit-by-Moebius) while the round realisation converges (residual 1e-12). The reason is a
-     theorem, not a measurement: vertex scalings leave cone angles unchanged, so cone angles are
-     invariants of discrete conformal equivalence; pulling a flat metric back multiplies the angle at a
-     lift by its local degree; and the chordal metric of the analytic preimages has angle < 2pi at
-     every vertex. So the lifted metric and the analytic metric are never discretely conformally
-     equivalent, at any refinement. **The scheme needs prescribed cone angles — the hyper-ideal
-     treatment of [5] Bobenko–Dimitrov–Sechelmann, branched covers over the sphere — and until it has
-     them no refinement criterion can make it converge.** Two further results from the same pass: the
-     cyclic order at a lifted vertex is forced at every simple corner, so the faces need neither a
-     search nor the round geometry (which provably gives the wrong order there); and the diagonal copy
-     of P in f^{-1}(P) is read with label p at the source point p, which lies over f(p) — the other
-     reading returns the input relabelled by f|_P, a mesh-independent quantity, which is how the mistake
-     was caught. Detail in `notes/thurston-pullback.md`.
+     *The refinement study — corrected 2026-10-28, and the earlier answer was wrong.* The first run
+     (2026-10-26) reported that the discrete step does not converge under refinement (step error constant
+     at 1.228e-01, ratio 1.00), and explained it by a claim that cone angles are invariants of discrete
+     conformal equivalence. **Both the explanation and the conclusion are retracted.** The claim is false:
+     a vertex scaling l̃_ij = exp((u_i+u_j)/2) l_ij changes every triangle angle (measured: +18.7°, −43.6°,
+     +24.9° on one triangle), and making the cone angles all 2π is precisely what discrete uniformization
+     does. The constant error was an artifact of the refinement used: `base_mesh` inserted a vertex in each
+     face at `mesh.face_sample`, whose weights are deliberately skewed (a symmetric centroid degenerates on
+     a face with an antipodal pair), and iterating the skew makes the puncture cone angles *diverge*
+     (measured 4.53 → 7.07 → 9.61 → 12.08 rad), so the meshes never converged to the round metric. With the
+     edge-midpoint refinement (midpoints projected to the sphere) the puncture angles converge at O(h²)
+     (deficits 5.10e-01, 1.39e-01, 3.56e-02, 8.97e-03) and **the step error falls: 1.2277e-01, 3.7865e-02
+     (ratio 3.24), 1.3812e-02 (ratio 2.74)** — order ~1.5–1.7, so the discrete step is consistent and the
+     scheme behaves. Consequence for scope: the justification for "the step needs prescribed cone angles,
+     i.e. [5]" is gone; BDS remains a relevant reference for branched-cover uniformization, but it is no
+     longer the fix for the step, and whether to pursue it is the author's call. The two results from the
+     same pass that stand: the cyclic order at a lifted vertex is forced at every simple corner (no search,
+     no round geometry, which provably gives the wrong order there); and the diagonal copy of P in f⁻¹(P) is
+     read with label p at the source point p, which lies over f(p). The false claim was also in the pushed
+     commit message 6be6690 — published history is not rewritten, so it stands there as an error of record.
+     Regression tests: `tests/test_mesh.py::TestRefinementConverges`. Detail in `notes/thurston-pullback.md`.
      *The mesh is a ribbon graph, and the order is checked against the spine (author, 2026-10-26).*
      `ribbons.RibbonGraph.dual()` gives the dual ribbon graph (an involution up to relabelling, tested);
      `mesh.RibbonMap` is a map given by a rotation system, with `faces`, `dual`, and a
@@ -741,7 +745,38 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      measurements: restrict to the tree's neighbours, and fix the cyclic start.  Limits: 4 points only (the
      enumeration waits for a map with |P| >= 5), and the step still does not converge — this fixes the
      combinatorics, not the cone-angle problem, which is [5].
-     *The hyper-ideal implementation plan (2026-10-28).* `notes/bds-hyper-ideal-plan.md` plans the [5]
+     *Decision (author, 2026-10-28): no BDS for now, no adaptive meshing.* Keep the simplest option:
+     the step converges with the rounding machinery in hand, and adaptive refinement has nothing to
+     localise (the discretisation error is proportional to face count; the worst 10% of faces carry
+     20.9%). Adopting BDS would restructure the step — Delaunay intersection angles on the base, lift the
+     angles not the metric, the prescribed-angle functional, the Section 13.2 doubling — for a step that
+     already works. It returns to the table only if the observed rate (~1.6) stalls short of the
+     precision the reconstruction needs; its angle-preserving prescription is the more faithful discrete
+     analogue of conformality, so it is the first thing to try then. Scope note, because it is easy to
+     misread: BDS's non-positive-curvature hypothesis is on the *input* (Θ_k ≥ 2π) and the output is
+     always flat; the sphere case is Theorem 3, and it fits because the surface uniformized is the *lift*
+     (angles 2πN_k ≥ 2π from ramification), not the base — whose own puncture angles are 5.77, 5.99, 4.53,
+     4.78 rad, all below 2π. Detail in `notes/bds-hyper-ideal-plan.md` §0bis.
+     *Reformulation of the pullback step (author, 2026-10-28) — avoids explicit ribbon moves.* Written up
+     in `notes/spine-reformulation.md` (local); the construction: uniformize to get the conformal cover
+     g: Ĉ−P₁ → Ĉ−P₀; take Γ₁ = g⁻¹(Γ₀) as a spine; identify the active points P₀′ ⊂ P₁ from the orbit
+     dynamics (exactly the punctures φ does not fill in, so that |P₀′| = |P₀| and Γ₀, Γ₀′ have equal
+     rank); Delaunay-decompose P₀′ and dualise for a spine Γ₀′ of Ĉ−P₀′; a map υ: Γ₁ → Γ₀′ comes free from
+     the retraction of a spine ("by the nature of spines"); a one-sided homotopy inverse ψ: Γ₀ → Γ₁ of φ
+     (Pilgrim–Thurston's *homotopy lift*) gives h = υ∘ψ, a homotopy equivalence; then the new virtual
+     endomorphism is the pullback of (π, φ) along h, which `spines.pullback` already computes. Why it
+     matters: the earlier plan needed either a constrained triangulation (mesh containing Γ₀) or a chain of
+     explicit collapses and expansions to transport (π, φ) onto a spine read off the mesh, with the chain's
+     non-uniqueness being exactly the twist. The reformulation replaces both by building the new spine
+     geometrically and getting the comparison map from the universal property of a spine. Machinery in
+     place: polygonal faces (commit `bfbe093`), `spines.pullback`, `round_realise` with the analytic
+     Jacobian, the spine moves as a fallback. Missing: the Delaunay *block* grouping (cocircular faces as
+     single polygons — the canonical Delaunay decomposition is not always a triangulation), the retraction
+     υ as an explicit graph map, and ψ, the one genuine algorithmic gap. Open: what exactly "active" means
+     for degree d > 2; which retraction (the ribbon data is not homotopy-invariant); and whether Γ₀′ is
+     built from the current or the output positions. The author's own open question: h should be a ribbon
+     map, but how to read that off directly.
+     *The hyper-ideal implementation plan (2026-10-28, reference only).* `notes/bds-hyper-ideal-plan.md` plans the [5]
      construction: what our measurements require (the cone-angle obstruction of the study), what the paper
      provides (Theorems 1–3, the variational principle of Sections 10–11 with the gradient being the angle
      mismatch, the Section 13.2 doubling algorithm, the Section 14 numerics), the proposed mapping of the
@@ -749,7 +784,7 @@ Order confirmed 2026-10-23 (D6): as listed — algebra (M2) before energies
      correcting the cone angles to 2π), five questions for the author's reading (the labelled reading of the
      output; the all-flat case; the Delaunay requirement vs the spine-dual complex; the choice of k∞; the
      precision target), and a seven-stage implementation plan with a failing test at each stage. Not
-     implemented; the paper is cached at .scratch/bds-1510.04053.pdf for the author's reading.
+     implemented; the paper is at refs/bobenko-dimitrov-sechelmann-1510.04053.pdf for the author's reading.
      *Strictly rational test data (author's request, 2026-10-26).* Every numeric example was a
      polynomial, whose infinity is fixed and totally ramified. `thurston.strictly_rational_rabbit`
      (the rabbit conjugated by z ↦ z/(z+1): not a polynomial, no point of P at infinity, a
