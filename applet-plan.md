@@ -18,10 +18,11 @@ optional later port.
   deferred; contraction is reported only for the group actually computed.
 - M3 p = 2 core implemented and certified on the fixtures. Obstruction
   matrices are not built. The p ≠ 2 layer is paused for a rewrite.
-- M4 has a working discrete-conformal step for known analytic maps and an
-  exact VE-native initial portrait, but no accepted arbitrary-start
-  convergence or rational reconstruction. The current blocker is a sound,
-  embedded, orientation-controlled lifted cover; see 330.
+- M4 has a working discrete-conformal step for known analytic maps, an exact
+  VE-native initial portrait, and the scoped `Session.refined_geometry` operator
+  for the rabbit. It has no accepted arbitrary-start convergence or rational
+  reconstruction. A full derived `phi'` graph map and a general VE pullback
+  remain open. See 330 and 335.
 - M5 has a scripting facade and desktop panels, but not final packaging.
 
 A candidate in the convergence gate is not a convergence, fixed-point or
@@ -239,7 +240,8 @@ notes are outside the tracked tree.
 `iterates.py`, `energies.py`; M4: `discrete.py`, `mesh.py`, `rounding.py`,
 `rounding_multi.py`, `lift.py`, `lift_round.py`, `embedding.py`,
 `homotopy.py`, `iteration.py`, `initial.py`, `ve_initial.py`, `ve_state.py`,
-`rational.py`, `thurston.py`; interface: `session.py`, `app/`; orbifold and
+`refined_cover.py`, `refined_ve.py`, `rational.py`, `thurston.py`; interface:
+`session.py`, `app/`; orbifold and
 gate: `orbifold.py`, `convergence.py`. Library source of truth:
 `scripts/build_library.py`. Cross-checks: `scripts/img_crosscheck.py`,
 `scripts/db_iteration_check.py`, `scripts/refinement_study.py`; `make check`
@@ -277,22 +279,55 @@ D6 order: algebra before energies.
     the lifted cover once and moves labelled positions and lengths; it
     reproduces the rabbit fixtures and converges to the known marking at the
     tested refinements. This is not yet an arbitrary-VE constructor.
+  * **Refined public API.** `Session.refined_geometry` returns a
+    `refined_ve.RefinedVE`: targeted branch-point-edge split, inherited chordal
+    metric, deterministic F2 orientation seed, and one realisation. The entry
+    point is
+    `session.refined_geometry(points=..., chains=..., postcritical_lifts=...)`.
+    Declared `chains` skip `find_transports`; `pullback_ve` still validates the
+    transport. `postcritical_lifts` is an explicit convention input because the
+    portrait cannot determine that table. With no transport declared, the legacy
+    `RefinedVE(session)` constructor retains the old census path. `RefinedVE.step`
+    enforces the base-orientation gate and raises `FoldedBase` on mixed-sign
+    configurations rather than trusting a folded base. Sixteen tests cover
+    subdivision/collapse, uniform refinement, embedded read-offs, folded
+    controls, invalid declared transports, and a hard assertion that declared
+    inputs never call the census. The arc-midpoint convention is not Möbius
+    covariant; every gauge comparison needs a declared convention.
   * **Necessary geometric gates.** A step must have a sound branched cover and
-    satisfy: rank/excess E−rank A−redundant=2V−6; measured residual; injective
-    vertices and consistently oriented nondegenerate faces; a fixed mirror
-    branch; and labelled Möbius covariance. Residual or zero excess alone is
-    not acceptance.
+    satisfy: rank A = V and the position-independent combinatorial deficiency
+    E−rank A−redundant = 2V−6; realised excess
+    2V−6−rank(PJ) = 0 at a *converged* solution; measured residual; radial
+    embedding (all face determinants one sign and spherical degree ±1);
+    ambient PL injectivity; a fixed mirror branch; and labelled Möbius
+    covariance. Residual, face counts or any one of these alone is not
+    acceptance. A same-sign determinant pattern without degree ±1 can be a
+    double cover.
   * **Mirror orientation.** Chordal lengths are invariant under O(3), so a
     reflected configuration solves the same length equations and conjugates
     the labelled moduli coordinate. Orientation must be carried from the
     initial embedding/ribbon structure and through continuation; it cannot be
     inferred from the lengths alone.
   * **Measured enrichment boundary.** Splitting the rabbit's ramified–ramified
-    base edge removes its one parallel lifted pair and gives V=8, E=18,
-    excess=0, but the realisation still folds (6 of 12 faces oppositely
-    oriented). The fan/corner-slot complex has parallel classes for the same
-    structural reason. A genuine embedded branched lift remains to be found;
-    the deferred Ptolemy/Delaunay experiment (335) is one candidate route.
+    base edge removes its one parallel lifted pair and gives V=8,E=18. Its
+    default solver branch folds (six determinants of each sign, radial degree
+    0), but the *same complex and inherited lengths* have an embedded branch:
+    radial degree ±1, ambient-injective, residual about 1e-15, realised excess
+    0, rank(PJ)=10. The folded default and embedded branch are different
+    conformal solutions, not Möbius gauges. A deterministic one-sign
+    pre-solve sheet-assignment is now available at the tested initial
+    configuration, with the other three starts folding, but remains untested on
+    other gauges and transports. Item335 shows that Delaunay flips do not
+    supply the selection rule.
+  * **Refinement before lifting, measured.** Uniform $1\to4$ ribbon-compatible
+    subdivision preserves the cover: $V=26,E=72,F=48$ and $V=98,E=288,F=192$,
+    with all triangle/edge projections and inherited lengths exact. The
+    embedded branch continues through both, with $\max|\theta-2\pi|$ at the
+    original vertices $2.439\to0.842\to0.305$ rad. Splitting non-ramified base
+    edges gives the same counts but rank-deficient exact solutions in the
+    tested starts, so the branch-point-edge split is a required structural
+    choice, not cosmetic. The cone deficit is a refinement-scale error, not an
+    extra independent equation at fixed mesh size.
   * **Mesh decisions.** Keep uniform refinement and the simple mesh for now;
     no BDS implementation and no adaptive meshing. Correct edge-midpoint
     refinement makes puncture angles converge at O(h²) and the rabbit step
@@ -304,19 +339,35 @@ D6 order: algebra before energies.
     session is still needed. The Devaney family supplies such maps but its
     spines are drawings, not yet encoded sessions. The author will hand-encode
     the first one when wanted.
-  * **No arbitrary-start convergence claim yet.** The coarse lifted dual can
-    underdetermine the conformal class; the enriched rabbit cover is canonical
-    in rank but folded. Consequently the current step is not accepted as a
-    Thurston iterate and no fixed point or reconstruction is claimed. The
-    orientation-controlled embedded-cover gate is the immediate blocker.
-- **335.** **Deferred geometric experiment: Ptolemy/Delaunay
-  retriangulation.** A Ptolemy flip preserves the induced flat/Penner
-  structure while changing the triangulation, so variable Delaunay
-  retriangulation may reach embedded realisations that a fixed complex cannot.
-  This is an experiment, not a default: enumerate candidates, check the
-  invariant, Delaunay condition, rank/excess, embedding and labelled
-  coordinate, and compare with flips disabled. Promote it only if it repairs a
-  concrete failed realisation.
+  * **No arbitrary-start convergence claim yet.** The coarse active four
+    punctures carry a $K_4$ metric, so the coarse step is a no-op on their
+    coordinates; the split removes one active-active chord and permits real
+    movement. A conformal pre-solve lift gives four sheet assignments, exactly
+    one of which is one-sign at the tested configuration and lands in the
+    embedded basin in four Newton iterations, with the mirror degree $-1$.
+    The corresponding frozen enriched step stayed embedded for three steps,
+    but the displacement stayed about $0.09$, not convergent. Remaining work:
+    derive a genuine `phi'` graph map rather than treating the portrait as a
+    canonical carrier, move beyond the explicitly inherited postcritical lift
+    table, unify auxiliary/certificate gauge conventions, and prove convergence.
+    `VEInit.step` still freezes the coarse complex; `refined_geometry` is the
+    scoped one-step operator, not that general pullback.
+- **335.** **Ptolemy/Delaunay retriangulation — investigated, not the repair.**
+  On the rabbit, the inherited flat metric is already locally Delaunay: zero
+  interior edges violate the opposite-angle condition, so there is no
+  metric-indicated flip. A Ptolemy flip changes the flat PL metric and preserves
+  only the induced conformal/Penner class; a Euclidean flip preserves the flat
+  metric but not that class; they coincide only for a concyclic quadrilateral.
+  Covariant flips lift functorially, but the coarse base is K4 (no flip) and all
+  three legal split-base flips recreate the ramified–ramified parallel pair and
+  fail to lift. One non-covariant coarse-lift flip can produce an
+  ambient-injective excess-0 surface, but it has radial degree 0 and covers base
+  faces 3+1 instead of 2+2, so it is not an accepted lifted realisation.
+  Meanwhile the unchanged enriched complex has an embedded branch (see 330).
+  Therefore item 335 does not repair this fold and is not promoted to a default
+  step. A future variable-Delaunay experiment must fix the decorated
+  configuration and use both ambient and radial-degree certificates; it should
+  not be run merely because a low-residual branch folds.
 - **336.** **Computed orbifold and convergence gate.** `orbifold.py` derives
   Thurston's exact ν from the VE, with ν=∞ exactly on critical cycles, and
   reports signature and χ_orb as exact rationals. Milnor's four-point Lattès
