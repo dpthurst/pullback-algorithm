@@ -19,6 +19,7 @@ import numpy as np
 
 from pullback import mesh
 from pullback import refined_cover as rr
+from pullback.hyperbolic_centre import centred_coordinates
 from pullback.maps import make_graph_map
 from pullback.ribbons import B, F, reduce_chain
 
@@ -257,7 +258,7 @@ def _target_metadata(output_points):
 
 
 def geometric_upsilon(source, source_positions, output_points, target=None,
-                      steps=(256, 512)):
+                      steps=(256, 512), centre="hyperbolic"):
     """Compute ``upsilon : source -> Voronoi(output_points)`` as a graph map.
 
     ``source`` is the lifted spine as a RibbonGraph.  ``source_positions[i]``
@@ -266,8 +267,14 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
     Every edge in ``source.edge_list()`` is assigned a chain by direct cell
     retraction, and vertex images are shared by every incident edge.  A
     two-resolution certificate is required per edge.  ``output_points`` may be
-    chart scalars or three-dimensional chordal vectors.  Any non-stabilising,
-    degenerate, or antipodal data raise GeometricRetractionError.
+    chart scalars or three-dimensional chordal vectors.  By default the source
+    and output configurations are transformed by their Lorentz-hyperbolic
+    centroid, so central membership remains meaningful in any hemisphere.
+    ``centre="origin"`` retains the earlier construction for negative controls.
+    Any non-stabilising, degenerate, or antipodal data raise
+    GeometricRetractionError.  Fully cocircular output still needs its
+    two-dimensional carrier; this routine refuses it rather than choosing a
+    facet in a zero-thickness hull.
 
     The returned dict contains the actual ``GraphMap`` as ``map``, the output
     ``target``, the cell and dart path of every edge, the two sampling levels,
@@ -276,29 +283,45 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
     chain-indexed pullback metric.
     """
     q = _output_vectors(output_points)
-    # Use one input convention everywhere.  In particular, chordal-vector
-    # callers must not be normalised by _output_vectors and then have their
-    # original vectors passed to mesh.to_vector, which expects a chart point.
-    chart_points = [mesh.to_point(v) for v in q]
+    if source_positions is None and source is None:
+        # Permit target-only diagnostic calls; a real graph map still needs the
+        # source as soon as target construction and centration have succeeded.
+        x = np.empty((0, 3), dtype=float)
+    else:
+        x = np.asarray(source_positions, dtype=float)
+    expected_shape = (0 if source is None else len(source.vertices()), 3)
+    if x.shape != expected_shape:
+        raise GeometricRetractionError(
+            f"expected {expected_shape} source positions, got {x.shape}")
+    x = np.array([_unit(v) for v in x])
     try:
+        if centre == "hyperbolic":
+            x, q, gauge = centred_coordinates(x, q)
+        elif centre == "origin":
+            gauge = {"construction": "unmodified sphere origin"}
+        else:
+            raise ValueError("centre must be 'hyperbolic' or 'origin'")
+        # Use the centred coordinates consistently for Delaunay, Voronoi, and
+        # every source arc.  Chordal-vector callers get the same normalisation
+        # as chart-scalar callers; the raw arrays are not mixed back in.
+        chart_points = [mesh.to_point(v) for v in q]
+        _faces, edge_faces, voronoi_faces = _target_metadata(chart_points)
+        if not _origin_inside_hull(q, _faces):
+            if centre == "hyperbolic":
+                raise GeometricRetractionError(
+                    "the output has a zero-thickness Delaunay hull; the "
+                    "two-dimensional equatorial carrier is required instead")
+            raise GeometricRetractionError(
+                "the sphere centre is not strictly inside the output Delaunay "
+                "hull; re-chart before using the origin-cell retraction")
         if target is None:
             target = mesh.voronoi_spine(chart_points)
-        _faces, edge_faces, voronoi_faces = _target_metadata(chart_points)
     except (TypeError, ValueError) as exc:
         raise GeometricRetractionError(
-            f"degenerate output Delaunay/Voronoi data: {exc}") from exc
-    if not _origin_inside_hull(q, _faces):
-        raise GeometricRetractionError(
-            "the sphere centre is not strictly inside the output Delaunay "
-            "hull; re-chart before using the central-cell retraction")
+            f"degenerate centred Delaunay/Voronoi data: {exc}") from exc
     # Delaunay-face and edge labels are independent of numerical refinement.
     target._edge_faces = edge_faces
     target._voronoi_faces = voronoi_faces
-    x = np.asarray(source_positions, dtype=float)
-    if x.shape != (len(source.vertices()), 3):
-        raise GeometricRetractionError(
-            f"expected {(len(source.vertices()), 3)} source positions, got {x.shape}")
-    x = np.array([_unit(v) for v in x])
     index = {v: i for i, v in enumerate(source.vertices())}
     # A vertex whose radial projection lies on a Delaunay edge retracts to the
     # interior of the dual Voronoi edge, not to one of its endpoints.  GraphMap
@@ -385,6 +408,9 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
         "vertex_cells": vertex_cells,
         "target_face_points": mesh.voronoi_face_points(target, len(q)),
         "output_points": list(output_points),
+        "centred_output": q.copy(),
+        "centred_source": x.copy(),
+        "gauge": gauge,
     }
 
 

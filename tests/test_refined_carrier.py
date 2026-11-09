@@ -2,8 +2,8 @@
 import os
 import unittest
 
-from pullback.geometric_retraction import GeometricRetractionError
 from pullback.marked_iteration import continue_refined, iterate_marked, marked_step
+from pullback.refined_ve import FoldedBase
 from pullback.session import Session
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -107,10 +107,34 @@ class TestRefinedCarrier(unittest.TestCase):
             self.assertEqual(step["next_seed"], "previous_realisation")
         self.assertIsNone(self.orbit["terminal"].init.transports)
 
-    def test_fourth_step_stops_at_the_geometric_rechart_boundary(self):
+    def test_fourth_step_succeeds_after_hyperbolic_centring(self):
         fourth = continue_refined(self.third)
-        with self.assertRaisesRegex(GeometricRetractionError, "sphere centre"):
-            marked_step(fourth, x0=self.third["numerical"]["x"])
+        step = marked_step(fourth, x0=self.third["numerical"]["x"])
+        self.assertTrue(all(step["identities"].values()))
+        cert = step["numerical"]
+        self.assertTrue(cert["embedded"] and cert["injective"])
+        self.assertEqual(cert["excess"], 0)
+        self.assertLess(cert["residual"], 1e-12)
+        self.assertEqual(step["upsilon"]["gauge"]["construction"],
+                         "Springborn zero-barycentre Lorentz placement")
+        c = step["carrier"]
+        point_to_face = {p: f for f, p in step["refined"].init.face_points.items()}
+        expected = [(point_to_face[step["refined"].target[u]]
+                     if u in step["refined"].target else None)
+                    for _face, u in sorted(c["source_face_punctures"].items())]
+        self.assertEqual(c["certificates"]["peripheral_images"], expected)
+        self.assertEqual(sorted(c["certificates"]["active_source_faces"].values()),
+                         [0, 1, 2, 3])
+
+    def test_step_five_hits_the_independent_refined_base_fold(self):
+        after_four = continue_refined(
+            marked_step(continue_refined(self.third),
+                        x0=self.third["numerical"]["x"]))
+        orientation = after_four.base_orientation(after_four.points)
+        self.assertEqual((orientation["pos"], orientation["neg"],
+                          orientation["one_sign"]), (3, 3, False))
+        with self.assertRaisesRegex(FoldedBase, "arc-midpoint split convention"):
+            after_four.step(after_four.points)
 
     def test_nonembedded_realisation_is_refused_before_graph_work(self):
         with self.assertRaisesRegex(ValueError, "embedded"):

@@ -16,6 +16,8 @@ from pullback.geometric_retraction import (
     refined_upsilon,
     refined_vertex_positions,
 )
+from pullback.homotopy import compose
+from pullback.maps import make_graph_map
 from pullback.ribbons import B, F, RibbonGraph, tighten
 from pullback.session import Session
 from pullback.validate import is_pi1_surjective, rose_words, spanning_tree
@@ -163,9 +165,10 @@ class TestGeometricRetraction(unittest.TestCase):
         q.append([0.0, 0.0, 1.0])
         points = [mesh.to_point(v) for v in np.asarray(q)]
         # This is a valid Delaunay/Voronoi configuration, but rays from the origin
-        # can meet two facets.  It needs a re-chart, not an arbitrary facet choice.
+        # can meet two facets.  Hyperbolic centration is tested separately; the
+        # legacy origin-only route must still refuse rather than pick a facet.
         with pytest.raises(GeometricRetractionError, match="sphere centre"):
-            geometric_upsilon(None, None, points)
+            geometric_upsilon(None, None, points, centre="origin")
 
     def test_edge_ambiguity_uses_one_shared_puncture_pair_transition(self):
         q, points = _tetrahedron()
@@ -262,6 +265,39 @@ class TestGeometricRetraction(unittest.TestCase):
             (),
             ((2, B), (0, B), (1, F)),
         ]
+
+    def test_springborn_centring_preserves_the_old_origin_homotopy(self):
+        refined, cert, centred = self.rabbit
+        source = refined_spine(refined)
+        output = [cert["config"][i] for i in range(4)]
+        positions = refined_vertex_positions(refined, cert["x"])
+        old = geometric_upsilon(source, positions, output, centre="origin",
+                                steps=(64, 128))
+        oldt, newt = old["target"], centred["target"]
+
+        def face_signature(graph, vertex):
+            return frozenset(e for e, incident in graph._voronoi_faces.items()
+                             if vertex in incident)
+
+        image_of_face = {face_signature(newt, v): v for v in newt.vertices()}
+        images = {v: image_of_face[face_signature(oldt, v)] for v in oldt.vertices()}
+        chains = {}
+        for edge in oldt.edge_list():
+            a, b = oldt.edges[edge]
+            alternatives = [(edge, ori) for ori in (F, B)
+                            if newt.src((edge, ori)) == images[a]
+                            and newt.tgt((edge, ori)) == images[b]]
+            self.assertEqual(len(alternatives), 1)
+            chains[edge] = alternatives
+        iso = make_graph_map(oldt, newt, chains, images)
+        left = compose(iso, old["map"])
+        right = centred["map"]
+        tree, gens = spanning_tree(source)
+        target_tree, _ = spanning_tree(right.target)
+        self.assertEqual(rose_words(left, target_tree, tree, gens),
+                         rose_words(right, target_tree, tree, gens))
+        self.assertTrue(all(left.chains[e] == right.chains[e]
+                            for e in source.edge_list()))
 
     def test_real_rabbit_peripheral_classes(self):
         refined, _cert, upsilon = self.rabbit
