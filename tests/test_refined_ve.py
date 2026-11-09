@@ -33,16 +33,18 @@ def _unit(v):
     return v / np.linalg.norm(v)
 
 
-def _mobius_image(x, a, lam):
+def _mobius_image(x, a, lam, shift=0j):
     """A declared spherical Möbius map, used for the folded-base controls."""
     x = np.asarray(x, dtype=float)
     a = _unit(a)
     ax = np.array([[0.0, -a[2], a[1]], [a[2], 0.0, -a[0]],
                    [-a[1], a[0], 0.0]])
-    rot = np.eye(3) + ax + ax @ ax / 2.0
+    angle = float(np.arccos(np.clip(a[2], -1.0, 1.0)))
+    rot = (np.eye(3) + np.sin(angle) * ax
+           + (1.0 - np.cos(angle)) * ax @ ax)
     y = x @ rot.T
     z = (y[:, 0] + 1j * y[:, 1]) / (1.0 - y[:, 2])
-    z = lam * z
+    z = lam * z + shift
     den = 1.0 + np.abs(z) ** 2
     return np.stack([2 * z.real / den, 2 * z.imag / den,
                      (np.abs(z) ** 2 - 1) / den], axis=1)
@@ -59,6 +61,8 @@ def _configs():
     rot = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
     return {"fib": fib(), "alt": alt, "polar": polar, "near": near,
             "fib_mobius": _mobius_image(fib(), (0.3, -0.4, 0.5), 1.7 + 0.6j),
+            "mobius_m2": _mobius_image(fib(), (0.6, 0.3, 0.75), 0.4, -0.9 + 0.3j),
+            "mobius_m3": _mobius_image(fib(), (-0.7, 0.6, 0.35), 2.3, 1.1j),
             "fib_rot": fib() @ rot.T,
             "alt_mobius": _mobius_image(alt, (-0.2, 0.6, -0.3), 0.8 - 1.1j)}
 
@@ -216,6 +220,17 @@ def test_portrait_is_not_enough(state):
                for a, b in zip(good["chart"][1], deck["chart"][1]))
 
 
+def test_mobius_controls_preserve_cross_ratios():
+    """The folded controls are genuine Möbius copies, not only generic maps."""
+    for name, moved in _configs().items():
+        if name in ("fib_mobius", "mobius_m2", "mobius_m3", "alt_mobius"):
+            original_chart = pl.chart(fib() if name != "alt_mobius" else _configs()["alt"])
+            moved_chart = pl.chart(moved)
+            assert moved_chart[0] == original_chart[0]
+            assert max(abs(complex(a) - complex(b))
+                       for a, b in zip(original_chart[1], moved_chart[1])) < 1e-9, name
+
+
 def test_folded_base_refuses_to_step(state):
     """The gate is enforced in the API, not merely reported."""
     s, st = state
@@ -224,8 +239,8 @@ def test_folded_base_refuses_to_step(state):
     assert good["one_sign"]
     assert st.step(cfg)["base"]["one_sign"]
     cfgs = _configs()
-    folded = {k: cfgs[k] for k in ("alt_mobius", "fib_mobius", "near")}
-    embedded = {k: cfgs[k] for k in ("fib", "alt", "polar", "fib_rot")}
+    folded = {k: cfgs[k] for k in ("fib_mobius", "mobius_m2", "mobius_m3", "near")}
+    embedded = {k: cfgs[k] for k in ("fib", "alt", "polar", "fib_rot", "alt_mobius")}
     for name, cfg2 in embedded.items():
         assert st.base_orientation([np.asarray(p, dtype=float) for p in cfg2])["one_sign"], name
     for name, cfg2 in folded.items():
