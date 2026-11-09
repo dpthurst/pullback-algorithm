@@ -141,11 +141,17 @@ class VEInit:
             raise ValueError(f"{n} punctures need {n} points, got {len(self.points)}")
         self.spine = spine = mesh.voronoi_spine(self.points)
         self.face_points = mesh.voronoi_face_points(spine, n)
-        sols = find_transports(spine, session.base, max_word=max_word)
-        if not sols:
-            raise ValueError("no peripheral-preserving homotopy equivalence found")
-        self.transports = len(sols)
-        self.chains = dict(chains) if chains is not None else sols[0]
+        if chains is None:
+            sols = find_transports(spine, session.base, max_word=max_word)
+            if not sols:
+                raise ValueError("no peripheral-preserving homotopy equivalence found")
+            self.transports = len(sols)
+            self.chains = sols[0]
+        else:
+            # pullback_ve validates the declared h below; do not also compute
+            # the exhaustive census merely to discard it.
+            self.transports = None
+            self.chains = dict(chains)
         self.h = h = make_graph_map(
             spine, session.base, self.chains,
             {v: session.base.vertices()[0] for v in spine.vertices()})

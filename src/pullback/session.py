@@ -107,8 +107,9 @@ class Session:
         No analytic map or analytic preimage is read.  The session's VE data
         determine the transport and lifted combinatorics; `points` optionally
         supplies an arbitrary initial configuration (otherwise a Fibonacci
-        sphere, rotated by `seed`).  `chains` optionally selects one of the
-        admissible homotopy equivalences enumerated in that search.
+        sphere, rotated by `seed`).  `chains` optionally declares the
+        homotopy equivalence directly, in which case the transport census is
+        skipped and `pullback_ve` validates that map.
 
         This is an initial condition, not a transport-uniqueness assertion.
         The returned state's `step` and `iterate` expose discretisation
@@ -117,9 +118,23 @@ class Session:
         from .ve_state import VEInit
         state = VEInit(self, points=points, seed=seed, chains=chains,
                        max_word=max_word)
-        state.convergence = self.convergence()
         return state
 
+    def refined_geometry(self, points=None, seed=0, chains=None,
+                         postcritical_lifts=None, init=None):
+        """The targeted edge-split cover and one refined numerical step.
+
+        Supplying ``chains`` and ``postcritical_lifts`` declares the two
+        initial conventions explicitly and avoids the transport census.  The
+        returned object carries corner-slot/cover certificates and a
+        deterministic F2 orientation seed.  It is not the full VE pullback
+        map or a convergence claim; folded base configurations are refused.
+        """
+        from .refined_ve import RefinedVE
+        state = RefinedVE(self, points=points, seed=seed, chains=chains,
+                          postcritical_lifts=postcritical_lifts, init=init)
+        state.convergence = self.convergence()
+        return state
     def initial_dual_state(self, positions=None, seed=0):
         """Initialise from the edge-labelled dual of the session's spines.
 
