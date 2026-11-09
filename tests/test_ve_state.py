@@ -141,6 +141,22 @@ class TestStructure(Constructed):
         self.assertEqual(self.cert["lifted_labels"], {0: 3, 1: 1, 2: 0, 3: 5})
         self.assertEqual(self.cert["dynamics"], {0: 2, 1: 0, 2: 1, 3: 3})
 
+    def test_identity_comparison_update_keeps_both_directions(self):
+        from pullback.validate import rose_words, spanning_tree
+
+        v = self.v
+        out = v.advance_comparison(v.spine, v.phi_prime)
+        tree, gens = spanning_tree(v.spine)
+        words = lambda m: rose_words(m, tree, tree, gens)
+        self.assertEqual(words(out["to_original"]), words(v.h))
+        from_original = out["from_original"]
+        self.assertIs(from_original.source, v.session.base)
+        self.assertIs(from_original.target, v.spine)
+        self.assertIs(out["to_original"].source, v.spine)
+        self.assertIs(out["to_original"].target, v.session.base)
+        self.assertEqual(out["P"].serialization(), v.P.serialization())
+
+
     def test_hyperideal_vertices_are_reported_not_hidden(self):
         self.assertEqual(self.cert["hyperideal"], [1, 5])
         for v in self.cert["hyperideal"]:

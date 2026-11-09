@@ -48,12 +48,12 @@ import numpy as np
 
 from pullback import mesh
 from pullback.homotopy import is_peripheral_preserving, peripheral_images
-from pullback.lift import (active_puncture_labels, dual_cells,
-                           lifted_delaunay_metric, pullback_ve,
+from pullback.lift import (active_puncture_labels, advance_comparison,
+                           dual_cells, lifted_delaunay_metric, pullback_ve,
                            round_realise_cells)
 from pullback.maps import make_graph_map
 from pullback.portrait import face_map_pi, face_map_phi
-from pullback.ribbons import B, F
+from pullback.ribbons import B, F, RibbonGraph
 from pullback.validate import is_pi1_surjective
 
 mp.mp.dps = 40
@@ -133,13 +133,23 @@ class VEInit:
     metric              : the initial lifted metric (chordal lengths, cone angles)
     """
 
-    def __init__(self, session, points=None, seed=0, chains=None, max_word=1):
+    def __init__(self, session, points=None, seed=0, chains=None, max_word=1,
+                 basepoint=None):
         self.session = session
         n = len(session.base.faces())
         self.points = list(points) if points is not None else spread_points(n, seed)
         if len(self.points) != n:
             raise ValueError(f"{n} punctures need {n} points, got {len(self.points)}")
         self.spine = spine = mesh.voronoi_spine(self.points)
+        if basepoint is not None:
+            if basepoint not in spine.flowers:
+                raise ValueError(f"unknown spine basepoint {basepoint!r}")
+            # A marked iteration carries its source basepoint.  Reordering only
+            # the dictionary preserves every dart and face, but makes the
+            # homotopy-section routines use that same point on the next step.
+            order = [basepoint] + [v for v in spine.vertices() if v != basepoint]
+            spine = RibbonGraph({v: spine.flowers[v] for v in order})
+            self.spine = spine
         self.face_points = mesh.voronoi_face_points(spine, n)
         if chains is None:
             sols = find_transports(spine, session.base, max_word=max_word)
@@ -183,6 +193,20 @@ class VEInit:
                                              base_faces=self.base_faces)
         self.x = None
         self.convergence = session.convergence()
+
+    def advance_comparison(self, new_spine, upsilon):
+        """Return the next VE and its accumulated comparison to the input.
+
+        `self.h` is the current geometric-spine-to-input comparison.  The
+        returned `to_original` and `from_original` compose it with the
+        retraction-induced update instead of restarting from the new geometry.
+        This changes no numerical state and does not run `step`; constructing
+        the output-side `new_spine` and `upsilon` remains the caller's geometric
+        responsibility.
+        """
+        return advance_comparison(
+            self.session, self.spine, self.P, self.phi_prime, self.h,
+            new_spine, upsilon)
 
     # -------------------------------------------------------------- geometry
     def step(self, config, x0=None, require_embedded=False):

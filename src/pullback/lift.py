@@ -31,8 +31,8 @@ from .portrait import face_map_phi, face_map_pi
 from .ribbons import F
 from .validate import is_pi1_surjective, rose_words, spanning_tree
 
-__all__ = ["lift_chain", "pullback_ve", "dual_cells", "dual_polygons",
-           "parallel_edge_pairs", "lifted_delaunay_metric",
+__all__ = ["lift_chain", "pullback_ve", "advance_comparison", "dual_cells",
+           "dual_polygons", "parallel_edge_pairs", "lifted_delaunay_metric",
            "active_puncture_labels", "round_realise_cells"]
 
 
@@ -168,6 +168,56 @@ def pullback_ve(base, cover, phi, new_spine, h_inverse, h=None,
     phi_prime.src, phi_prime.tgt = P, new_spine
     phi_prime.name = "phi_prime"
     return P, pi_prime, phi_prime, proj_to_cover
+
+
+def advance_comparison(session, spine, lifted, phi_prime, to_original,
+                       new_spine, upsilon):
+    """Transport a VE to `new_spine`, preserving its comparison to the input.
+
+    This is the comparison algebra of `notes/spine-reformulation.md`.  `spine`
+    is the current geometric spine, `lifted` and `phi_prime` are its cover and
+    inclusion leg, and `to_original : spine -> session.base` is the *accumulated*
+    comparison with the original input graph, not the virtual endomorphism on
+    pi_1.  `upsilon : lifted -> new_spine` is the retraction-induced comparison
+    supplied by the geometric output.
+
+    If psi is a homotopy section of phi_prime, set k = upsilon . psi.  Then
+
+        from_original_new = k . from_original,
+        to_original_new   = to_original . k^{-1}.
+
+    Both directions are retained explicitly so no later step has to reconstruct
+    or silently reset the relation to the input Gamma_0.  The pair is supplied to
+    `pullback_ve`, whose validation checks the two inverse-on-pi_1 identities.
+    The geometric construction of upsilon is deliberately outside this function.
+    """
+    if upsilon.source is not lifted or upsilon.target is not new_spine:
+        raise ValueError("upsilon must map the current lifted graph to new_spine")
+    section = homotopy_section(spine, lifted, phi_prime)
+    comparison = compose(upsilon, section["psi"])
+    # comparison : spine -> new_spine, so its right inverse lives on the
+    # target: homotopy_section(base=new_spine, cover=spine, phi=comparison)
+    # returns new_spine -> spine.  Passing spine first reproduced comparison's
+    # own direction and was invisible whenever new_spine was literally spine.
+    comparison_inverse = homotopy_section(new_spine, spine, comparison)["psi"]
+    new_to_original = compose(to_original, comparison_inverse)
+    from_original = homotopy_section(session.base, spine, to_original)["psi"]
+    new_from_original = compose(comparison, from_original)
+    P, pi_prime, phi_new, projection = pullback_ve(
+        session.base, session.cover, session.phi, new_spine,
+        new_to_original, h=new_from_original)
+    return {
+        "P": P,
+        "pi_prime": pi_prime,
+        "phi_prime": phi_new,
+        "projection": projection,
+        "new_spine": new_spine,
+        "to_original": new_to_original,
+        "from_original": new_from_original,
+        "comparison": comparison,
+        "comparison_inverse": comparison_inverse,
+        "section": section["psi"],
+    }
 
 
 def dual_cells(graph):

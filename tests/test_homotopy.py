@@ -14,7 +14,9 @@ sys.path.insert(0, "src")
 from pullback.homotopy import (active_faces, basis_transport, compose,  # noqa: E402
                                homotopy_section, is_peripheral_preserving,
                                peripheral_images)
-from pullback.ribbons import F  # noqa: E402
+from pullback.lift import advance_comparison, pullback_ve  # noqa: E402
+from pullback.maps import make_graph_map  # noqa: E402
+from pullback.ribbons import B, F, RibbonGraph  # noqa: E402
 from pullback.session import Session   # noqa: E402
 from pullback.validate import rose_words, spanning_tree  # noqa: E402
 
@@ -111,6 +113,84 @@ class TestGeometricComparison(unittest.TestCase):
         got = [tuple((cgens.index(d[0]), d[1]) for d in w)
                for w in rose_words(composed, ctree, ctree, cgens)]
         self.assertEqual(got, [((i, F),) for i in range(len(cgens))])
+
+
+class TestAccumulatedComparison(unittest.TestCase):
+    """The update keeps the relation to the *original* Gamma_0."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session = Session.load("sessions/rabbit.json")
+        cls.base = cls.session.base
+        cls.rho = basis_transport(cls.base, cls.base)
+        cls.P, _pi, cls.phi, _pc = pullback_ve(
+            cls.base, cls.session.cover, cls.session.phi, cls.base, cls.rho)
+
+    def based_words(self, graph_map):
+        tree, gens = spanning_tree(self.base)
+        return rose_words(graph_map, tree, tree, gens)
+
+    def test_identity_update_preserves_the_accumulated_comparison(self):
+        # upsilon = phi gives k = phi o psi = id on pi_1.  This is the
+        # degenerate output-side control: the comparison update must not invent
+        # a twist, and the reconstructed cover must have the same structure.
+        out = advance_comparison(
+            self.session, self.base, self.P, self.phi, self.rho,
+            self.base, self.phi)
+        self.assertEqual(out["P"].serialization(), self.P.serialization())
+        self.assertEqual(self.based_words(out["to_original"]),
+                         self.based_words(self.rho))
+        tree_target, _gens_target = spanning_tree(self.base)
+        tree_source, gens_source = spanning_tree(self.P)
+        self.assertEqual(rose_words(out["phi_prime"], tree_target,
+                                    tree_source, gens_source),
+                         rose_words(self.phi, tree_target,
+                                    tree_source, gens_source))
+
+    def test_inverse_goes_from_a_distinct_new_spine_back_to_the_old_one(self):
+        # A distinct isomorphic target exposes the direction of k^{-1}.  With
+        # new_spine is self.base, the old argument swap was invisible: it
+        # returned another copy of k rather than a map from the new target
+        # back to the old spine.
+        new_spine = RibbonGraph(self.base.flowers)
+        upsilon = make_graph_map(self.P, new_spine, self.phi.chains,
+                                 self.phi.vertex_images)
+        out = advance_comparison(
+            self.session, self.base, self.P, self.phi, self.rho,
+            new_spine, upsilon)
+        self.assertIs(out["new_spine"], new_spine)
+        self.assertIs(out["comparison_inverse"].source, new_spine)
+        self.assertIs(out["comparison_inverse"].target, self.base)
+        self.assertIs(out["to_original"].source, new_spine)
+        self.assertIs(out["from_original"].target, new_spine)
+        self.assertEqual(out["P"].serialization(), self.P.serialization())
+        self.assertEqual(self.based_words(out["to_original"]),
+                         self.based_words(self.rho))
+
+    def test_a_nontrivial_twist_is_composed_not_forgotten(self):
+        # A peripheral-preserving automorphism of F(a,b,c), certified in the
+        # rabbit/twisted-rabbit analysis.  With upsilon = A o phi we have
+        # k = A on pi_1.  A reset to the old comparison would return the
+        # identity instead of A and its inverse.
+        base = self.base
+        root = base.vertices()[0]
+        A = make_graph_map(base, base, {
+            "a": (("b", B), ("a", F), ("b", F)),
+            "b": (("b", B), ("a", B), ("b", F), ("a", F), ("b", F)),
+            "c": (("c", F),),
+        }, {root: root})
+        out = advance_comparison(
+            self.session, self.base, self.P, self.phi, self.rho,
+            base, compose(A, self.phi))
+        self.assertEqual(self.based_words(out["from_original"]),
+                         self.based_words(A))
+        self.assertNotEqual(self.based_words(out["to_original"]),
+                            self.based_words(self.rho))
+        # pullback_ve validates the two inverse-on-pi_1 identities and realises
+        # the new cover from the *original* input pair, not a newly guessed h.
+        self.assertEqual(out["P"].vertices(), self.P.vertices())
+        self.assertEqual(out["pi_prime"].target, base)
+        self.assertEqual(out["phi_prime"].target, base)
 
 
 if __name__ == "__main__":
