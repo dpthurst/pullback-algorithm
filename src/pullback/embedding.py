@@ -10,28 +10,24 @@ independent things have to be certified, and neither is the conformal residual:
       configurations are compared there and nowhere else.
 
   (2) EMBEDDING.  The realisation must be a homeomorphism onto S^2, not a folded
-      or collapsed image.  For *chordal* triangles there is an exact, cheap
-      certificate.  Take the complex with a consistently oriented face list
-      (orient_faces propagates one and refuses a non-orientable complex).  Then
+      or collapsed image.  For *chordal* triangles, take the complex with a
+      consistently oriented face list (`orient_faces` propagates one and
+      refuses a non-orientable complex).  The determinant
 
           det(a, b, c) = a . (b x c) = 2 * (signed solid angle numerator)
 
-      is, up to a positive factor, the signed distance of the origin from the
-      plane of the face: det = n . a with n = (b-a) x (c-a), so the plane's
-      equation is n . y = det and the origin lies on the inner side iff
-      det > 0.  Hence
+      gives the sign of each face's solid angle.  Equal signs alone are NOT
+      sufficient: a positively oriented surface can cover S^2 twice.  The
+      certificate also requires the spherical degree
 
-          all det_f > 0   <=>   the origin is strictly inside every supporting
-                                half-space   ==>   the polyhedral surface is the
-                                boundary of a region containing the origin
-                                ==>   the winding number is 1
-                                ==>   radial projection to S^2 is a
-                                      homeomorphism.
+          deg = (1 / 4*pi) * sum_f signed_solid_angle(f)
 
-      That is the embedding certificate.  It needs no area formula with an
-      atan2 branch and no hemisphere assumption: `det > 0` for every face is
-      exactly "the closed polyhedron contains the origin and is not
-      self-intersecting".  `min |det|` measures how far from degenerate it is.
+      to be +1 or -1.  With every determinant of one sign and degree +/-1,
+      every regular radial ray meets the surface once with one orientation, so
+      radial projection to S^2 is a homeomorphism.  A self-intersecting
+      all-positive degree-2 control is pinned in `tests/test_embedding.py`.
+      `min |det|` measures conditioning, not embedding.
+
       (A configuration can be embedded with every cone angle above 2*pi: the
       cone angle is a sum of *Euclidean* angles in the tangent-ish planes and is
       not bounded by the solid angles.)
@@ -51,7 +47,7 @@ __all__ = ["orient_faces", "pair_labels", "mobius_coordinate", "face_determinant
            "classify", "branch_sweep", "spherical_area"]
 
 
-def orient_faces(faces, labels):
+def orient_faces(faces, labels, with_labels=False):
     """A consistently oriented copy of a labelled face list, or a refusal.
 
     `labels[k][j]` must be the edge id of the edge from `faces[k][j]` to
@@ -59,6 +55,9 @@ def orient_faces(faces, labels):
     two distinct edges joining vertices 0 and 5, and pairing by vertices would
     make it look non-manifold.  One orientation is propagated across the dual
     graph: two faces sharing an edge must traverse it in opposite directions.
+    With `with_labels=True`, return `(oriented_faces, oriented_edge_labels)`
+    rather than discarding the labels; the default keeps the historical return
+    shape.
     """
     faces = [tuple(f) for f in faces]
     labels = [tuple(l) for l in labels]
@@ -81,7 +80,7 @@ def orient_faces(faces, labels):
             l = label_triple[r:] + label_triple[:r]
             out.append((t, l))
         rev = triple[::-1]
-        rev_l = (label_triple[2], label_triple[1], label_triple[0])
+        rev_l = (label_triple[1], label_triple[0], label_triple[2])
         for r in range(3):
             t = rev[r:] + rev[:r]
             l = rev_l[r:] + rev_l[:r]
@@ -111,7 +110,10 @@ def orient_faces(faces, labels):
                 stack.append(other)
     if len(oriented) != len(faces):
         raise ValueError("complex is not connected")
-    return tuple(oriented[k][0] for k in range(len(faces)))
+    result = tuple(oriented[k][0] for k in range(len(faces)))
+    if with_labels:
+        return result, tuple(oriented[k][1] for k in range(len(faces)))
+    return result
 
 
 def pair_labels(faces):
@@ -138,43 +140,54 @@ def spherical_area(a, b, c):
     return float(2.0 * np.arctan2(det, den))
 
 
-def embedding_certificate(x, oriented_faces, tol=1e-9, inject_tol=1e-7):
-    """Is `x` an embedded realisation of the consistently oriented complex?
+def embedding_certificate(x, oriented_faces, tol=1e-9, inject_tol=1e-7,
+                          degree_tol=1e-7):
+    """Is `x` an embedded radial realisation of the oriented complex?
 
-    Three conditions, all necessary and together sufficient:
-      * every vertex position is distinct (injectivity -- two non-adjacent
-        vertices may coincide without making any face degenerate, and then the
-        signed area sum is 8*pi rather than 4*pi, which is how the omission
-        shows up);
-      * no face is degenerate (det != 0);
-      * all face determinants have one sign, i.e. the origin is strictly inside
-        every supporting plane, so the winding number is 1 and radial
-        projection to S^2 is a homeomorphism.
+    Conditions, all required:
+      * distinct vertex positions;
+      * no degenerate face;
+      * every face determinant has the same sign;
+      * spherical degree is +1 or -1.
+
+    A same-sign determinant pattern alone is insufficient: an oriented surface
+    can cover S^2 twice.  The degree is computed from signed solid angles.
     """
     x = np.asarray(x, dtype=float)
+    det = face_determinants(x, oriented_faces)
+    areas = [spherical_area(x[a], x[b], x[c]) for a, b, c in oriented_faces]
+    area_sum = float(sum(areas))
+    degree = area_sum / (4.0 * np.pi)
+    common = {"det": det, "signed_area_sum": area_sum, "degree": degree}
     rounded = [tuple(np.round(v, 8)) for v in x]
     if len(set(rounded)) != len(rounded):
         pairs = [(i, j) for i in range(len(x)) for j in range(i + 1, len(x))
                  if float(np.linalg.norm(x[i] - x[j])) <= inject_tol]
-        return {"embedded": False, "det": face_determinants(x, oriented_faces),
-                "min_abs_det": 0.0, "signs": 0,
+        return {"embedded": False, **common, "min_abs_det": 0.0, "signs": 0,
                 "reason": f"{len(x) - len(set(rounded))} coincident vertex "
                           f"pair(s), e.g. {pairs[:3]} -- not injective"}
-    det = face_determinants(x, oriented_faces)
     if np.any(np.abs(det) <= tol):
-        return {"embedded": False, "det": det,
+        return {"embedded": False, **common,
                 "reason": f"{int((np.abs(det) <= tol).sum())} degenerate face(s)",
                 "min_abs_det": float(np.abs(det).min()),
                 "signs": int(np.sign(det).sum())}
     positive = bool((det > 0).all())
     negative = bool((det < 0).all())
-    return {"embedded": positive or negative,
-            "det": det,
+    one_sign = positive or negative
+    degree_ok = abs(abs(degree) - 1.0) <= degree_tol
+    if not one_sign:
+        reason = (f"folded: {int((det < 0).sum())} of {len(det)} faces "
+                  "have the opposite orientation")
+    elif not degree_ok:
+        reason = (f"spherical image has degree {degree:.9g}, not +/-1: "
+                  "the oriented surface is not an embedding")
+    else:
+        reason = ""
+    return {"embedded": one_sign and degree_ok,
+            **common,
             "orientation": "+" if positive else ("-" if negative else "mixed"),
             "min_abs_det": float(np.abs(det).min()),
-            "reason": "" if (positive or negative) else
-                      f"folded: {int((det < 0).sum())} of {len(det)} faces "
-                      "have the opposite orientation"}
+            "reason": reason}
 
 
 def mobius_coordinate(x, tol=1e-8):
@@ -214,6 +227,7 @@ def classify(x, oriented_faces, points=None):
     x = np.asarray(x, dtype=float)
     areas = [spherical_area(x[a], x[b], x[c]) for a, b, c in oriented_faces]
     out = {"embedded": cert["embedded"],
+           "degree": cert["degree"],
            "min_abs_det": cert["min_abs_det"],
            "det": cert["det"],
            "reason": cert["reason"],

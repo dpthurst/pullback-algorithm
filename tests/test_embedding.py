@@ -56,6 +56,22 @@ class Invariant(unittest.TestCase):
         self.assertFalse(acceptance.embedding_certificate(
             self.collapse, self.oriented, inject_tol=0.0)["embedded"])
 
+    def test_orientation_reversal_rotates_edge_labels_with_the_face(self):
+        faces = [(0, 1, 2), (1, 2, 3), (1, 3, 0), (2, 0, 3)]
+        labels = [("a", "b", "c"), ("b", "f", "e"),
+                  ("e", "d", "a"), ("c", "d", "f")]
+        ends = {"a": (0, 1), "b": (1, 2), "c": (0, 2),
+                "d": (0, 3), "e": (1, 3), "f": (2, 3)}
+        oriented, oriented_labs = acceptance.orient_faces(
+            faces, labels, with_labels=True)
+        # The second face must be reversed to traverse the shared edge 2 -> 1.
+        self.assertEqual(oriented[1], (2, 1, 3))
+        for face, labs in zip(oriented, oriented_labs):
+            for j, lab in enumerate(labs):
+                self.assertEqual(sorted(ends[lab]),
+                                 sorted((face[j], face[(j + 1) % 3])),
+                                 msg=(face, labs))
+
     def test_a_known_embedded_configuration_passes(self):
         # control: the regular inscribed tetrahedron is a genuine embedded
         # spherical triangulation with the origin strictly inside, so the
@@ -72,6 +88,28 @@ class Invariant(unittest.TestCase):
         bad = vecs.copy()
         bad[0] = -bad[0]
         self.assertFalse(acceptance.embedding_certificate(bad, orf)["embedded"])
+
+    def test_all_positive_dets_are_not_enough_for_an_embedding(self):
+        # Regression from the item-335 audit: a consistently oriented
+        # triangulated sphere whose 10 determinants are all positive but whose
+        # radial image has degree 2 and overlaps itself.  Equal signs alone are
+        # therefore not a certificate.
+        x = np.array([
+            [0.959365, 0.279657, -0.03757],
+            [-0.840463, 0.54135, -0.023699],
+            [0.662515, 0.31859, -0.677919],
+            [0.42903, -0.793532, -0.431556],
+            [-0.523109, -0.196226, 0.829369],
+            [-0.618941, -0.696296, 0.363433],
+            [-0.006021, 0.079237, -0.996838]])
+        faces = [(2, 3, 6), (0, 1, 4), (2, 5, 1), (5, 4, 1), (2, 6, 4),
+                 (0, 4, 3), (6, 3, 4), (2, 4, 5), (2, 1, 0), (3, 2, 0)]
+        oriented = acceptance.orient_faces(faces, acceptance.pair_labels(faces))
+        cert = acceptance.embedding_certificate(x, oriented)
+        self.assertTrue((cert["det"] > 1e-3).all())
+        self.assertFalse(cert["embedded"])
+        self.assertAlmostEqual(abs(cert["degree"]), 2.0, places=5)
+        self.assertIn("degree", cert["reason"])
 
     # ---- the Mobius coordinate survives coincident points ----------------
     def test_mobius_coordinate_handles_the_collapse(self):
