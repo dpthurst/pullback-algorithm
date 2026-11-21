@@ -44,7 +44,16 @@ def _polyroots(coeffs):
         c.pop(0)
     if len(c) <= 1:
         return []
-    return mp.polyroots(c, maxsteps=200, extraprec=200)
+    try:
+        return mp.polyroots(c, maxsteps=1000, extraprec=200)
+    except mp.libmp.NoConvergence:
+        # Repeated roots can make mpmath's working-precision iteration stall
+        # (z^d already shows this at several precisions).  The public fibre
+        # code deduplicates at CLUSTER_TOL=1e-8, so retry in the documented
+        # 30-digit regime of that tolerance rather than aborting the fibre.
+        # ``workdps`` restores the caller's precision on exit.
+        with mp.workdps(min(mp.mp.dps, 30)):
+            return mp.polyroots(c, maxsteps=4000, extraprec=200)
 
 
 class RationalMap:
@@ -143,20 +152,20 @@ class RationalMap:
         return _root_multiplicity(self.den, z)
 
     def local_degree(self, z, tol=mp.mpf(10) ** (-12)):
-        """Local degree at a FINITE point: 2 when f' vanishes there (all
-        our branch points are simple), 1 otherwise; poles via order."""
+        """Local degree at a FINITE point, as a root multiplicity.
+
+        The old derivative heuristic returned at most 2, so it labelled a
+        triple point of z^3 (and every higher ramification) as degree 2.
+        ``tol`` remains in the signature for compatibility; multiplicity uses
+        the coefficient arithmetic of ``_root_multiplicity`` at the current
+        mpmath precision.
+        """
         z = mp.mpc(z)
         fz = self(z)
         if not mp.isfinite(fz):
             return self.pole_degree(z)
-        eps = mp.mpf("1e-15")
-        z1 = z + eps
-        z2 = z + 2 * eps * mp.mpc("0.7", "0.7")
-        d1 = (mp.mpc(self(z1)) - fz) / (z1 - z)
-        d2 = (mp.mpc(self(z2)) - fz) / (z2 - z)
-        if abs(d1) < tol and abs(d2) < tol:
-            return 2
-        return 1
+        coeff = _polysub(self.num, [fz * c for c in self.den])
+        return _root_multiplicity(coeff, z)
 
     def preimage_with_degrees(self, x):
         """[(y, local degree)] over every y in f^{-1}(x), x finite or

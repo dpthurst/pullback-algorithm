@@ -50,6 +50,19 @@ class TestPortraitDegrees(unittest.TestCase):
                 self.assertTrue(all(d >= 1 for d in degs))
                 self.assertEqual(sum(degs), (len(num) - 1 if len(num) >= len(den) else len(den) - 1) * n)
 
+    def test_higher_ramification_is_the_root_multiplicity(self):
+        for d in (2, 3, 4, 5):
+            with self.subTest(degree=d):
+                f = RationalMap([1] + [0] * d, [1])
+                self.assertEqual(f.local_degree(0), d)
+                # At 100 digits mpmath's direct repeated-root iteration can
+                # fail; the documented fallback must still return the fibre.
+                with mp.workdps(100):
+                    preimages = f.preimage_with_degrees(0)
+                self.assertEqual(len(preimages), 1)
+                self.assertLess(abs(preimages[0][0]), mp.mpf("1e-8"))
+                self.assertEqual(preimages[0][1], d)
+
 
 class TestPostcriticalOrbitThroughInfinity(unittest.TestCase):
     """The forward closure must continue PAST infinity, not stop at it.

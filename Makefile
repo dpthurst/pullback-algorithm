@@ -18,7 +18,7 @@ NUMERICS = tests.test_rational tests.test_moduli tests.test_teich \
            tests.test_strictly_rational tests.test_julia
 
 check:
-	$(PYTHON) -m unittest discover -s tests
+	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests
 
 check-engine:
 	$(PYTHON) -m unittest $(ENGINE)
