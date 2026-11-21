@@ -89,7 +89,8 @@ def _realisation_error(res, chart_tol):
     return None
 
 
-def uniformize_cover(lift, lengths, *, special_vertex=None, chart_tol=1e-8, **options):
+def uniformize_cover(lift, lengths, *, base=None, base_positions=None,
+                     special_vertex=None, chart_tol=1e-8, shortcuts=True, **options):
     """Run real CEPS and return every lifted vertex, grouped in its fibre.
 
     Each ``preimages[p]`` row is ``(lift_vertex, declared_local_degree, xyz)``.
@@ -98,6 +99,12 @@ def uniformize_cover(lift, lengths, *, special_vertex=None, chart_tol=1e-8, **op
     realizability, finite on-sphere distinct positions, a strictly supporting
     polyhedron, closed oriented labelled faces, and a flat-chart scaling
     residual at most ``chart_tol`` are required too.
+
+    Supplying ``base`` and ``base_positions`` first enables the exact two-branch
+    root shortcut.  It is used only when the declared cyclic monodromy is
+    compatible, with ``shortcut_error`` retained if certification fails and
+    CEPS retrieves the case.  Set ``shortcuts=False`` to force a CEPS control;
+    use :func:`shortcut_two_branch` to require the closed form.
 
     With ``special_vertex=None`` (the default), vertex ids are tried in order;
     both ``CEPSFailure`` and a returned invalid realisation are logged as failed
@@ -108,6 +115,15 @@ def uniformize_cover(lift, lengths, *, special_vertex=None, chart_tol=1e-8, **op
     faces, ell = _cover_geometry(lift, lengths)
     n = len(lift["proj"])
     options = dict(options)
+    shortcut_error = None
+    if shortcuts and base is not None and base_positions is not None:
+        from . import two_branch as tb
+        try:
+            return shortcut_two_branch(lift, base, base_positions, lengths)
+        except tb.NotTwoPoint:
+            pass
+        except tb.ShortcutFailure as exc:
+            shortcut_error = str(exc)
     candidates = list(range(n)) if special_vertex is None else [int(special_vertex)]
     t0 = time.perf_counter()
     attempts = []
@@ -146,11 +162,60 @@ def uniformize_cover(lift, lengths, *, special_vertex=None, chart_tol=1e-8, **op
     fibres = {}
     for u, p in proj.items():
         fibres.setdefault(p, []).append((int(u), int(lift["ld"][u]), P[u].copy()))
-    return {"positions": P, "preimages": fibres, "res": res,
-            "faces_final": list(res.faces_final), "face_lists": faces,
-            "lengths": ell, "uniformize_seconds": elapsed,
-            "ceps_seconds": elapsed, "ceps_phase_seconds": dict(res.timing),
-            "special_vertex": special, "special_attempts": attempts}
+    out = {"positions": P, "preimages": fibres, "res": res,
+           "faces_final": list(res.faces_final), "face_lists": faces,
+           "lengths": ell, "uniformize_seconds": elapsed,
+           "ceps_seconds": elapsed, "ceps_phase_seconds": dict(res.timing),
+           "special_vertex": special, "special_attempts": attempts,
+           "method": "ceps", "used_shortcut": False}
+    if shortcut_error is not None:
+        out["shortcut_error"] = shortcut_error
+    return out
+
+
+def shortcut_two_branch(lift, base, base_positions, lengths):
+    """Exact ``w^d`` uniformisation when exactly two branch values are present.
+
+    Riemann--Hurwitz forces total ramification at both values for any such
+    sphere cover.  The declared local monodromies are checked to be inverse
+    full cycles and the Galois deck action is transported through the declared
+    lifted edges; profiles alone are never used to infer that structure.
+
+    The return has the same positions/preimages convention as
+    :func:`uniformize_cover`.  Geometry of the *inherited face list* is
+    reported separately: correct roots can coexist with a wrapped or
+    non-simplicial lift, so convexity of that input chart is not embedded as
+    an algebraic acceptance gate.  Projection residual certifies membership
+    of each root in its declared fibre, not the root labelling; the latter
+    comes from the transported monodromy.  No synthetic CEPS ``res`` record is
+    returned, because its chart/KKT/schema have different meanings here.
+    """
+    from . import two_branch as tb
+
+    t0 = time.perf_counter()
+    built = tb.exact_positions(base, lift["d"], lift, base_positions)
+    certificate = tb.certificate(built, base, lift, base_positions)
+    residual = certificate["projection_residual"]
+    if not math.isfinite(residual) or residual > 1e-8:
+        raise tb.ShortcutFailure(f"root projection residual {residual} exceeds 1e-8")
+    if not certificate["fibre_ok"]:
+        raise tb.ShortcutFailure("closed-form fibres do not satisfy the declared degrees")
+    faces, ell = _cover_geometry(lift, lengths)
+    P = np.asarray(built["positions"], dtype=float)
+    n = len(lift["proj"])
+    if P.shape != (n, 3) or not np.all(np.isfinite(P)):
+        raise tb.ShortcutFailure("closed-form returned invalid positions")
+    fibres = {}
+    for u, p in lift["proj"].items():
+        fibres.setdefault(p, []).append((int(u), int(lift["ld"][u]), P[u].copy()))
+    elapsed = time.perf_counter() - t0
+    result = {"positions": P, "preimages": fibres, "method": "two-branch-root",
+              "faces_final": [tuple(v) for v, _labels in lift["tris"]],
+              "face_lists": faces, "lengths": ell, "root_indices": built["index"],
+              "certificate": certificate, "shortcut": built,
+              "used_shortcut": True, "uniformize_seconds": elapsed,
+              "ceps_seconds": elapsed, "ceps_phase_seconds": {"root_shortcut": elapsed}}
+    return result
 
 
 def _chart(p):
@@ -455,10 +520,13 @@ def polish_preimages(rational_map, initial_positions, targets, local_degrees=Non
 def lift_and_polish(rational_map, lift, lengths, targets, local_degrees,
                     *, special_vertex=None, gauge_map=None, maxit=32,
                     tol=1e-12, position_tol=1e-12, basin_radius=0.25,
+                    base=None, base_positions=None, shortcuts=True,
                     **solve_options):
     """Run CEPS, optionally apply an explicitly fitted gauge, then polish."""
-    solved = uniformize_cover(lift, lengths, special_vertex=special_vertex,
-                              **solve_options)
+    solved = uniformize_cover(lift, lengths, base=base,
+                              base_positions=base_positions,
+                              special_vertex=special_vertex,
+                              shortcuts=shortcuts, **solve_options)
     initial = (solved["positions"] if gauge_map is None
                else np.asarray(gauge_map.apply(solved["positions"])))
     polished = polish_preimages(

@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 
 from pullback import dense_assembly as A
-from pullback.dense_mesh import DenseMeshError, branch_ring, dense_base
+from pullback.dense_mesh import (DenseMeshError, branch_ring, dense_base,
+                                 subdivide_triangles)
 
 
 class TestDenseMesh(unittest.TestCase):
@@ -42,6 +43,32 @@ class TestDenseMesh(unittest.TestCase):
         self.assertTrue(lift["cert"]["chi_lift_ok"])
         self.assertTrue(lift["cert"]["rh_ok"])
         self.assertEqual(lift["d"], 3)
+
+    def test_feature_subdivision_preserves_labels_and_incidence(self):
+        X0 = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0],
+                       [0, -1, 0], [0, 0, 1], [0, 0, -1]], dtype=float)
+        F0 = [(0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4),
+              (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5)]
+        X1, F1 = subdivide_triangles(X0, F0)
+        self.assertEqual(len(X1), 18)
+        self.assertEqual(len(F1), 32)
+        np.testing.assert_allclose(X1[:6], X0, atol=1e-15, rtol=0)
+        base = A.base_from_face_lists(F1)
+        self.assertEqual((base.n_vertices(), base.n_edges(), base.n_faces()),
+                         (18, 48, 32))
+        self.assertEqual(base.euler(), 2)
+        for v in base.vertices:
+            self.assertEqual(len(base.flower(v)), base.face_degree[v])
+        X2, F2 = subdivide_triangles(X0, F0, levels=2)
+        self.assertEqual((len(X2), len(F2)), (66, 128))
+        self.assertEqual(A.base_from_face_lists(F2).euler(), 2)
+
+    def test_feature_subdivision_rejects_bad_faces_and_midpoints(self):
+        X = np.array([[1, 0, 0], [-1, 0, 0], [0, 0, 1]], dtype=float)
+        with self.assertRaises(DenseMeshError):
+            subdivide_triangles(X, [(0, 1, 1)])
+        with self.assertRaisesRegex(DenseMeshError, "antipodal midpoint"):
+            subdivide_triangles(X, [(0, 1, 2)], validate_hull=False)
 
     def test_bad_or_degenerate_input_is_not_silently_repaired(self):
         with self.assertRaises(ValueError):

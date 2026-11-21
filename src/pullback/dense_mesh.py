@@ -66,6 +66,65 @@ def unit(v):
     return v / np.linalg.norm(v)
 
 
+def subdivide_triangles(points, faces, levels=1, *, validate_hull=True):
+    """Subdivide a feature triangulation by spherical edge midpoints.
+
+    Every triangle is replaced by four. The midpoint of the unique shared edge
+    is inserted once, so orientation and edge incidence remain consistent.
+    Original vertex ids stay fixed: a caller's critical/feature labels need no
+    remap. This is the geometric companion to ``dense_base`` (icosphere plus
+    rings), not another choice of cover, metric or Newton start.
+
+    ``validate_hull=True`` additionally requires the refined face list to be
+    exactly the convex hull of the refined point set. That is a geometric
+    realisability check, not an assertion of an intrinsic Delaunay criterion.
+    Near-cocircular input which Qhull does not triangulate compatibly is
+    reported as ``DenseMeshError`` rather than accepted silently.
+    """
+    X = np.array([unit(p) for p in points], copy=True)
+    F = [tuple(map(int, f)) for f in faces]
+    levels = int(levels)
+    if levels < 0:
+        raise ValueError("levels must be nonnegative")
+    for f in F:
+        if len(f) != 3 or len(set(f)) != 3 or any(i < 0 or i >= len(X) for i in f):
+            raise DenseMeshError(f"invalid feature face {f}")
+    for _ in range(levels):
+        pts = [p.copy() for p in X]
+        midpoints = {}
+
+        def mid(a, b):
+            key = (min(a, b), max(a, b))
+            if key not in midpoints:
+                q = X[key[0]] + X[key[1]]
+                if np.linalg.norm(q) == 0:
+                    raise DenseMeshError(f"antipodal midpoint on edge {key}")
+                midpoints[key] = len(pts)
+                pts.append(unit(q))
+            return midpoints[key]
+
+        new_faces = []
+        for a, b, c in F:
+            ab, bc, ca = mid(a, b), mid(b, c), mid(c, a)
+            new_faces.extend([(a, ab, ca), (ab, b, bc), (ca, bc, c),
+                              (ab, bc, ca)])
+        X = np.asarray(pts, dtype=float)
+        F = new_faces
+
+    base = dense_assembly.base_from_face_lists(F)
+    for v in base.vertices:
+        base.flower(v)
+    if validate_hull and F:
+        try:
+            hull = ConvexHull(X)
+        except Exception as exc:                     # pragma: no cover - Qhull text
+            raise DenseMeshError(f"refined hull failed: {exc}") from exc
+        hull_faces = {frozenset(f) for f in hull.simplices}
+        if hull_faces != {frozenset(f) for f in F}:
+            raise DenseMeshError("refined triangles are not the point set's convex hull")
+    return X, F
+
+
 def _tangent_basis(v):
     v = unit(v)
     seed = np.array([0.0, 0.0, 1.0])
