@@ -40,6 +40,7 @@ import numpy as np
 from . import refined_cover as rr
 from pullback import embedding
 from pullback import rounding_multi as mg
+from pullback.hyperbolic_centre import centred_coordinates
 from pullback.mesh import to_vector
 from pullback.ve_state import VEInit
 
@@ -330,20 +331,136 @@ class RefinedVE:
             "base_of": lsub["base_of"], "proj": proj, "ld": ld}
 
     # ------------------------------------------------------------- geometry
-    def base_positions(self, config):
-        """The base points: the punctures, then the auxiliary arc midpoint."""
-        X = np.zeros((self.m + 1, 3))
-        for i in range(self.m):
-            v = np.asarray(config[i], dtype=float)
-            X[i] = v / np.linalg.norm(v)
+    def arc_midpoint(self, positions):
+        """The declared arc-midpoint rule: the ramified pair's chordal midpoint.
+
+        ``(X[a] + X[b]) / |X[a] + X[b]|`` for the ramified punctures ``a, b``:
+        the midpoint of the *shorter* great-circle arc between them.  This is a
+        convention, not a Möbius invariant -- a Möbius map sends that midpoint
+        to a point of the image arc which is generally not the midpoint of the
+        image's shorter arc -- so a chart comparison has to name it (plan item
+        330).  Antipodal ramified points leave no shorter arc and are refused
+        rather than resolved arbitrarily.
+        """
         a, b = self.ram
-        w = X[a] + X[b]
+        w = np.asarray(positions[a], dtype=float) + np.asarray(positions[b], dtype=float)
         nrm = float(np.linalg.norm(w))
-        if nrm < 1e-9:
-            raise ValueError(f"the branch points {self.ram} are antipodal: the arc "
-                             "midpoint is not defined by this convention")
-        X[self.m] = w / nrm
+        if not np.isfinite(nrm) or nrm < 1e-9:
+            raise ValueError(f"the branch points {self.ram} are antipodal (or not "
+                             f"finite): this arc-midpoint rule does not apply to {w}")
+        return w / nrm
+
+    def base_positions(self, config):
+        """The base points: the ``m`` punctures, then the arc midpoint."""
+        config = np.asarray(config, dtype=float)
+        if config.shape != (self.m, 3):
+            raise ValueError(f"expected {self.m} three-dimensional punctures, "
+                             f"got {config.shape}")
+        norms = np.linalg.norm(config, axis=1)
+        if not np.isfinite(config).all() or np.any(norms <= 0.0):
+            raise ValueError("base positions must be finite nonzero sphere vectors")
+        X = np.zeros((self.m + 1, 3))
+        X[:self.m] = config / norms[:, None]
+        X[self.m] = self.arc_midpoint(X)
         return X
+
+    def _edge_ratio_residual(self, before, after):
+        """Measure how far two base point sets are from one Möbius change.
+
+        A Möbius map scales every chord ``|x_a - x_b|`` by ``l_a l_b``, so the
+        log chord ratios of one set against another are ``u_a + u_b`` for one
+        number ``u`` per vertex exactly when the two finite data are
+        Möbius-related.  ``projector`` is the orthogonal complement of that
+        linear model, so the residual is zero to roundoff for a transported
+        datum and nonzero for a re-derived one.  It measures this finite datum;
+        it is not a step certificate.
+        """
+        P, order, _rows = mg.projector(self.edgesT2, self.m + 1)
+        ratios = []
+        for _label, i, j in order:
+            was = float(np.linalg.norm(before[j] - before[i]))
+            now = float(np.linalg.norm(after[j] - after[i]))
+            if not (was > 0.0 and now > 0.0):
+                raise ValueError("a base chord degenerates: two base points coincide")
+            ratios.append(float(np.log(now / was)))
+        return float(np.linalg.norm(P @ np.asarray(ratios)))
+
+    MIDPOINT_CONVENTIONS = ("transported", "recomputed")
+
+    def centred_refinement(self, config, midpoint="transported"):
+        """Source base positions in the Springborn-centred gauge.  No step run.
+
+        The punctures are carried by the Lorentz boost of
+        :func:`pullback.hyperbolic_centre.centred_coordinates` which puts their
+        ordinary barycentre at the origin.  The boost is unique up to a rotation,
+        so the result is one chart of the input configuration, not new geometry;
+        both conventions below return identical punctures.
+
+        The midpoint convention is a real choice, and the two are *not* gauge
+        versions of one number, because :meth:`arc_midpoint` is not Möbius
+        covariant:
+
+        ``transported``
+            one Möbius map carries the whole input datum ``(punctures,
+            midpoint)``.  The finite discretisation is the input's own, so every
+            base chord ratio is the Möbius factor ``exp((u_a + u_b)/2)`` of the
+            input ratio; ``edge_ratio_residual`` measures that and is ~0.  The
+            chart is therefore covariant on *pairs* ``(punctures, midpoint)``
+            only; applied to punctures alone it is not covariant, because the
+            declared midpoint rule is not.
+        ``recomputed``
+            the punctures are centred and the midpoint rule re-applied in the
+            new gauge.  The chart is then a function of the punctures alone, so
+            it *is* Möbius covariant up to rotation with no auxiliary data to
+            transport; the price is a different finite discretisation, and
+            ``edge_ratio_residual`` is nonzero by construction.
+
+        Returns ``(X, record)`` with ``X`` of shape ``(m + 1, 3)``: the ``m``
+        punctures and the midpoint as row ``m``.  The record names the
+        convention, the rule, the boost, the measured residuals and the scope.
+        Scope: this is *source-geometry preparation*.  No uniformisation is
+        solved, no Delaunay carrier is built, no determinant-sign acceptance is
+        claimed, and nothing here is a pullback step or an iteration.
+
+        Degenerate control worth knowing about: when the two ramified punctures
+        are symmetric about the centring direction, their images have equal
+        time coordinates and the two midpoints coincide (measured at the
+        twisted rabbit's seed-0 geometry to 4e-16).  Such a configuration
+        cannot discriminate the conventions; compare them on a Möbius-moved
+        configuration instead.
+        """
+        if midpoint not in self.MIDPOINT_CONVENTIONS:
+            raise ValueError(f"midpoint must be one of {self.MIDPOINT_CONVENTIONS}, "
+                             f"got {midpoint!r}")
+        raw = self.base_positions(config)
+        source = raw[self.m:] if midpoint == "transported" else raw[:self.m]
+        moved_source, moved_base, centre = centred_coordinates(source, raw[:self.m])
+        if midpoint == "transported":
+            X = np.vstack([moved_base, moved_source])
+        else:
+            X = self.base_positions(moved_base)
+        if X.shape != (self.m + 1, 3) or not np.isfinite(X).all():
+            raise ValueError("centred refinement must return m punctures and one midpoint")
+        if float(np.linalg.norm(X[:self.m].sum(axis=0))) > 1e-9:
+            raise ValueError("the centred punctures do not have a zero barycentre")
+        record = {
+            "midpoint_convention": midpoint,
+            "midpoint_rule": "normalised chordal midpoint of the ramified pair",
+            "chart": "Springborn zero-barycentre Lorentz placement (up to rotation)",
+            "boost": centre["boost"],
+            "centre": centre["centre"],
+            "centred_barycentre": centre["centred_barycentre"],
+            "boost_centre_residual": centre["boost_centre_residual"],
+            "lorentz_residual": centre["lorentz_residual"],
+            "null_residual": centre["null_residual"],
+            "solver": centre["solver"],
+            "edge_ratio_residual": self._edge_ratio_residual(raw, X),
+            "covariant_as": ("the datum (punctures, midpoint)"
+                             if midpoint == "transported"
+                             else "a function of the punctures alone"),
+            "scope": "source geometry only: no uniformisation, carrier, step or iteration",
+        }
+        return X, record
 
     def metric(self, config):
         X = self.base_positions(config)

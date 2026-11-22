@@ -20,6 +20,22 @@ import numpy as np
 from pullback import mesh
 from pullback import refined_cover as rr
 from pullback.hyperbolic_centre import centred_coordinates
+
+try:                                     # the two-cap carrier component
+    from pullback import equatorial_retraction as eq
+except ImportError as exc:               # tracked-only retention fallback
+    if "equatorial_retraction" not in str(exc):
+        raise
+    # Deliberately not fatal.  Without that module the two-cap carrier is
+    # simply unavailable and this module behaves exactly as it did before the
+    # carrier existed: a concyclic output is refused by _origin_inside_hull.
+    # The module and the equatorial hunks of this file are ONE retention unit
+    # (see the component note); this fallback only keeps the package
+    # importable if the unit is ever split by mistake.
+    eq = None
+
+#: Empty without the two-cap module, so an ``except`` clause never has to test.
+_EQUATORIAL_ERRORS = () if eq is None else (eq.EquatorialError,)
 from pullback.maps import make_graph_map
 from pullback.ribbons import B, F, reduce_chain
 
@@ -164,6 +180,13 @@ def _origin_inside_hull(q, faces, tol=1e-12):
     return True
 
 
+def _equatorial_route(q, faces, target):
+    """Carrier decision from the two-cap module, or the generic route."""
+    if eq is None:
+        return None, {"route": "unavailable", "plane_thickness": None}
+    return eq.equatorial_route(q, faces, source=target)
+
+
 def cell_sequence(a, b, q, faces, steps=256):
     """Collapse a great-circle arc to its ordered Delaunay-face indices."""
     arc = arc_points(a, b, steps)
@@ -191,7 +214,8 @@ def cell_sequence(a, b, q, faces, steps=256):
     return tuple(out), float(margin.min()), float(vertex_distance.min())
 
 
-def _word(cells, target, start_cell=None, end_cell=None):
+def _word(cells, target, start_cell=None, end_cell=None,
+          transition_labels=None):
     """Convert sampled Delaunay memberships to an oriented Voronoi chain.
 
     Candidates are handled as candidate faces, not as if a tuple were itself a
@@ -213,15 +237,22 @@ def _word(cells, target, start_cell=None, end_cell=None):
         raise GeometricRetractionError(
             f"declared end cell {end_cell} is not in {rows[-1]}")
     paths = {v: (0, (), v) for v in initial}
-    for candidates in rows[1:]:
+    for step, candidates in enumerate(rows[1:]):
         nxt = {}
         for a, (cost, word, start) in paths.items():
             for b in candidates:
                 if a == b:
                     nc, nw = cost, word
                 else:
-                    shared = [e for e, incident in target._voronoi_faces.items()
-                              if a in incident and b in incident]
+                    if transition_labels is not None:
+                        label = transition_labels[step]
+                        if label is None:
+                            raise GeometricRetractionError(
+                                f"unresolved equatorial transition: {cells}")
+                        shared = [label]
+                    else:
+                        shared = [e for e, incident in target._voronoi_faces.items()
+                                  if a in incident and b in incident]
                     if len(shared) != 1:
                         continue
                     nc, nw = cost + 1, word + ((shared[0], F if a < b else B),)
@@ -272,9 +303,15 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
     centroid, so central membership remains meaningful in any hemisphere.
     ``centre="origin"`` retains the earlier construction for negative controls.
     Any non-stabilising, degenerate, or antipodal data raise
-    GeometricRetractionError.  Fully cocircular output still needs its
-    two-dimensional carrier; this routine refuses it rather than choosing a
-    facet in a zero-thickness hull.
+    GeometricRetractionError.
+
+    A concyclic (cocircular) output is not refused: it is retracted onto the two-cap
+    carrier of :mod:`pullback.equatorial_retraction`, which owns the chart, the
+    acceptance policy and the cap transitions.  The route is decided there, by
+    one measure, and reported as ``"equatorial_route"``; a near-flat or
+    self-inconsistent configuration is a typed refusal, never a guess between
+    the two carriers.  Nothing here chooses a facet in a zero-thickness hull,
+    and no carrier change is called a completed pullback or a uniformisation.
 
     The returned dict contains the actual ``GraphMap`` as ``map``, the output
     ``target``, the cell and dart path of every edge, the two sampling levels,
@@ -306,22 +343,29 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
         # as chart-scalar callers; the raw arrays are not mixed back in.
         chart_points = [mesh.to_point(v) for v in q]
         _faces, edge_faces, voronoi_faces = _target_metadata(chart_points)
-        if not _origin_inside_hull(q, _faces):
-            if centre == "hyperbolic":
-                raise GeometricRetractionError(
-                    "the output has a zero-thickness Delaunay hull; the "
-                    "two-dimensional equatorial carrier is required instead")
-            raise GeometricRetractionError(
-                "the sphere centre is not strictly inside the output Delaunay "
-                "hull; re-chart before using the origin-cell retraction")
+        # One decision, taken where the two-cap chart and its acceptance policy
+        # live: either the equatorial carrier with its own plane and cap cells,
+        # or the generic central-projection route.  The two must agree with the
+        # combinatorial decomposition; a disagreement is a typed refusal there.
+        equatorial, equatorial_route = _equatorial_route(q, _faces, target)
         if target is None:
             target = mesh.voronoi_spine(chart_points)
+        if equatorial is None and not _origin_inside_hull(q, _faces):
+            raise GeometricRetractionError(
+                "the sphere centre is not strictly inside the output Delaunay "
+                "hull; re-chart before using the central-cell retraction")
+    except GeometricRetractionError:
+        raise
+    except _EQUATORIAL_ERRORS as exc:
+        raise GeometricRetractionError(str(exc)) from exc
     except (TypeError, ValueError) as exc:
         raise GeometricRetractionError(
             f"degenerate centred Delaunay/Voronoi data: {exc}") from exc
     # Delaunay-face and edge labels are independent of numerical refinement.
     target._edge_faces = edge_faces
     target._voronoi_faces = voronoi_faces
+    if source is None:
+        raise GeometricRetractionError("a source graph and source positions are required")
     index = {v: i for i, v in enumerate(source.vertices())}
     # A vertex whose radial projection lies on a Delaunay edge retracts to the
     # interior of the dual Voronoi edge, not to one of its endpoints.  GraphMap
@@ -336,14 +380,22 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
         if float(np.min(np.linalg.norm(q - p, axis=1))) <= 1e-10:
             raise GeometricRetractionError(
                 f"source vertex {v} coincides with an output puncture")
-        hits = tuple(_face_hits(p, q, _faces))
+        if equatorial is not None:
+            # A concyclic output is classified in its circle's plane, not by
+            # projecting a three-dimensional convex hull from the origin.
+            signed = float(p @ equatorial["normal"] - equatorial["offset"])
+            cells = equatorial["cells"]
+            hits = (cells if abs(signed) <= eq.DEFAULT_TOLERANCE
+                    else (cells[0] if signed > 0 else cells[1],))
+        else:
+            hits = tuple(_face_hits(p, q, _faces))
         if not hits:
             raise GeometricRetractionError(
                 f"source vertex {v} lies outside the output Delaunay cells")
         if len(hits) > 2:
             raise GeometricRetractionError(
                 f"source vertex {v} has ambiguous Delaunay cells {hits}")
-        if len(hits) == 2:
+        if len(hits) == 2 and equatorial is None:
             shared = [e for e, incident in voronoi_faces.items()
                       if set(incident) == set(hits)]
             if len(shared) != 1:
@@ -363,8 +415,14 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
                     raise GeometricRetractionError(
                         f"edge {label!r}: the arc passes through output "
                         f"puncture {puncture}")
-            first = cell_sequence(pa, pb, q, _faces, steps[0])
-            second = cell_sequence(pa, pb, q, _faces, steps[1])
+            if equatorial is not None:
+                first = eq.cell_sequence(pa, pb, q, _faces, target,
+                                         steps=steps[0], geo=equatorial)
+                second = eq.cell_sequence(pa, pb, q, _faces, target,
+                                          steps=steps[1], geo=equatorial)
+            else:
+                first = (*cell_sequence(pa, pb, q, _faces, steps[0]), None)
+                second = (*cell_sequence(pa, pb, q, _faces, steps[1]), None)
             if first[0] != second[0]:
                 raise GeometricRetractionError(
                     f"edge {label!r}: unstable nearest-cell sequence "
@@ -372,14 +430,18 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
             if min(first[2], second[2]) <= 1e-10:
                 raise GeometricRetractionError(
                     f"edge {label!r}: the arc meets an output puncture")
+            if first[3] != second[3]:
+                raise GeometricRetractionError(
+                    f"edge {label!r}: unstable equatorial transition labels")
             word, start_cell, end_cell = _word(
-                first[0], target, vertex_images[a], vertex_images[b])
+                first[0], target, vertex_images[a], vertex_images[b], first[3])
             second_word, second_start, second_end = _word(
-                second[0], target, vertex_images[a], vertex_images[b])
+                second[0], target, vertex_images[a], vertex_images[b], second[3])
             if (word, start_cell, end_cell) != (second_word, second_start, second_end):
                 raise GeometricRetractionError(
                     f"edge {label!r}: unresolved cell choices do not stabilise")
             cell_rows[label] = {"cells": first[0], "darts": word,
+                                "transition_labels": first[3],
                                 "nearest_margin": min(first[1], second[1]),
                                 "closest_puncture": min(first[2], second[2])}
             chains[label] = word
@@ -394,6 +456,8 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
                 raise GeometricRetractionError(
                     f"inconsistent end cell at source vertex {b}")
         result = make_graph_map(source, target, chains, vertex_images)
+    except _EQUATORIAL_ERRORS as exc:
+        raise GeometricRetractionError(str(exc)) from exc
     except KeyError as exc:
         raise GeometricRetractionError(f"missing source-edge geometry: {exc}") from exc
     return {
@@ -407,6 +471,8 @@ def geometric_upsilon(source, source_positions, output_points, target=None,
         "vertex_images": dict(vertex_images),
         "vertex_cells": vertex_cells,
         "target_face_points": mesh.voronoi_face_points(target, len(q)),
+        "equatorial": equatorial is not None,
+        "equatorial_route": equatorial_route,
         "output_points": list(output_points),
         "centred_output": q.copy(),
         "centred_source": x.copy(),

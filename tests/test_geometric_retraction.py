@@ -106,9 +106,25 @@ class TestGeometricRetraction(unittest.TestCase):
         with pytest.raises(GeometricRetractionError, match="punctures 0 and 1"):
             geometric_upsilon(None, None, points)
 
-    def test_degenerate_target_data_have_a_typed_refusal(self):
-        with pytest.raises(GeometricRetractionError, match="Delaunay/Voronoi"):
+    def test_missing_source_has_a_typed_refusal(self):
+        # Exactly concyclic output is now a two-cap carrier, not a refusal, so
+        # the only thing missing here is the source the returned map needs.
+        with pytest.raises(GeometricRetractionError, match="source graph"):
             geometric_upsilon(None, None, [1.0, 1.0j, -1.0, -1.0j])
+
+    def test_degenerate_centred_data_have_a_typed_refusal(self):
+        # Two punctures a nanoradian apart leave the centred construction
+        # without a zero-barycentre placement.  This is the clause that turned
+        # every numerical failure of the centred chart into one named refusal;
+        # the equatorial change had left it with no test at all.
+        q = []
+        for k in range(4):
+            angle = k * np.pi / 2
+            q.append(_unit([0.6 * np.cos(angle), 0.6 * np.sin(angle), 0.0]))
+        q[3] = _unit([0.6 * np.cos(np.pi + 1e-7),
+                      0.6 * np.sin(np.pi + 1e-7), 0.0])
+        with pytest.raises(GeometricRetractionError, match="degenerate centred"):
+            geometric_upsilon(None, None, [mesh.to_point(v) for v in q])
 
     def test_delaunay_facet_membership_and_a_single_cell_arc(self):
         q, points = _tetrahedron()

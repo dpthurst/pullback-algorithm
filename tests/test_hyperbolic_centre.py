@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 
+from pullback import mesh
 from pullback.geometric_retraction import (
     GeometricRetractionError, geometric_upsilon)
 from pullback.hyperbolic_centre import LORENTZ, centred_coordinates
@@ -82,12 +83,20 @@ class TestHyperbolicCentre(unittest.TestCase):
         self.assertLess(rec1["null_residual"], 1e-12)
         self.assertLess(rec2["null_residual"], 1e-12)
 
-    def test_exact_equator_is_not_forced_through_a_three_dimensional_chart(self):
+    def test_exact_equator_uses_the_two_cap_carrier(self):
         q = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
                       [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]])
-        with self.assertRaisesRegex(GeometricRetractionError,
-                                    "two-dimensional equatorial carrier"):
-            geometric_upsilon(None, None, q)
+        points = [mesh.to_point(v) for v in q]
+        source = RibbonGraph({0: (("arc", F),), 1: (("arc", B),)})
+        a = np.array([0.7, 0.4, 0.5]); a /= np.linalg.norm(a)
+        b = np.array([0.8, 0.2, -0.2]); b /= np.linalg.norm(b)
+        out = geometric_upsilon(source, np.array([a, b]), points,
+                                steps=(32, 64))
+        self.assertEqual((len(out["target"].vertices()),
+                          len(out["target"].edge_list()),
+                          len(out["target"].faces())), (2, 4, 4))
+        self.assertTrue(out["equatorial"])
+        self.assertNotEqual(out["map"].chains["arc"], ())
 
     def test_every_positive_punctured_detail_refuses_an_arc_through_a_puncture(self):
         # A valid centred tetrahedron must not be confused with the equatorial

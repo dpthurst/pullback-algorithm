@@ -771,7 +771,21 @@ def delaunay_faces(points, tol=1e-9):
             x1, y1 = [q for q in flat if q[2] == poly[t]][0][:2]
             x2, y2 = [q for q in flat if q[2] == poly[(t + 1) % len(poly)]][0][:2]
             area += x1 * y2 - x2 * y1
-        out.append(tuple(poly) if area > 0 else tuple(reversed(poly)))
+        poly = tuple(poly) if area > 0 else tuple(reversed(poly))
+        if len(on) == n:
+            # ALL points lie on one supporting plane.  The inputs are unit
+            # vectors, so that plane meets the sphere in a circle and coplanar
+            # is exactly concyclic: the empty-circle Delaunay cells are the two
+            # caps bounded by it.  A single facet cannot supply a closed
+            # sphere, so return TWO polygons.  Their common boundary has a
+            # canonical cyclic order -- every point of a circle is an extreme
+            # point -- so no diagonal is chosen and the dual Voronoi spine has
+            # n parallel edges, one per puncture pair.  A projected set with an
+            # interior point would be coplanar but not on the sphere; the unit
+            # normalisation upstream excludes it, and _hull_2d's
+            # strictly-non-collinear test excludes a collapsed order.
+            return [poly, (poly[0],) + tuple(reversed(poly[1:]))]
+        out.append(poly)
     return orient_faces(points, out)
 
 
@@ -806,35 +820,31 @@ def voronoi_spine(points, name="voronoi"):
         for k in range(n):
             edge_to_faces[edge_key(f[k], f[(k + 1) % n])].append(idx)
     rot = {}
-    edge_labels = {}
     for idx, f in enumerate(faces):
         n = len(f)
         nbrs = []
         for k in range(n):
-            # This is the PRIMAL Delaunay edge.  It is the label a lifted edge
-            # must carry so that its length can be inherited from the base.
-            # Using edge_key(idx, neighbour) here would instead label by the two
-            # dual endpoints and silently attach the wrong metric to the lift.
+            # The PRIMAL Delaunay edge: the label a lifted edge must carry so
+            # that its length can be inherited from the base.
             e = edge_key(f[k], f[(k + 1) % n])
             others = [j for j in edge_to_faces[e] if j != idx]
             if len(others) != 1:
                 raise ValueError(
                     f"the Delaunay decomposition is not a cell decomposition:"
                     f" edge {e} is in {len(others) + 1} faces")
-            nbrs.append(others[0])
-            edge_labels[(idx, others[0])] = e
+            nbrs.append((others[0], e))
         # the dual reverses the orientation, as in `RibbonMap.dual`
         rot[idx] = list(reversed(nbrs))
+    # Label every dart by its primal edge rather than by the dual endpoint
+    # pair (face, neighbour).  The two agree for a generic decomposition.  A
+    # fully cocircular one has two faces sharing EVERY primal edge, so its
+    # dual edges are parallel and (face, neighbour) would collapse them onto
+    # one label; the primal pair (i, j) is still unique, and it is also the
+    # label the inherited chordal metric expects.
     flowers = {}
-    for v, ns in rot.items():
-        darts = []
-        for u in ns:
-            label = edge_labels[(v, u)]
-            # Edge orientation is a dual-graph convention (smaller face index
-            # to larger); the label itself belongs to the primal point set and
-            # is unrelated to the dual endpoint indices.
-            darts.append((label, F if v < u else B))
-        flowers[v] = tuple(darts)
+    for idx, entries in rot.items():
+        flowers[idx] = tuple((e, F if idx < other else B)
+                             for other, e in entries)
     return RibbonGraph(flowers)
 
 
