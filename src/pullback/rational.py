@@ -44,7 +44,16 @@ def _polyroots(coeffs):
         c.pop(0)
     if len(c) <= 1:
         return []
-    return mp.polyroots(c, maxsteps=200, extraprec=200)
+    try:
+        return mp.polyroots(c, maxsteps=1000, extraprec=200)
+    except mp.libmp.NoConvergence:
+        # Repeated roots can make mpmath's working-precision iteration stall
+        # (z^d already shows this at several precisions).  The public fibre
+        # code deduplicates at CLUSTER_TOL=1e-8, so retry in the documented
+        # 30-digit regime of that tolerance rather than aborting the fibre.
+        # ``workdps`` restores the caller's precision on exit.
+        with mp.workdps(min(mp.mp.dps, 30)):
+            return mp.polyroots(c, maxsteps=4000, extraprec=200)
 
 
 class RationalMap:
@@ -66,6 +75,19 @@ class RationalMap:
         if abs(d) < mp.mpf(10) ** (-mp.mp.dps + 8):
             return mp.inf
         return n / d
+
+    def derivative(self, z):
+        """f'(z) = (N'D - N D')/D^2, for finite z away from the poles."""
+        def deriv(c):
+            n = len(c) - 1
+            return [c[i] * (n - i) for i in range(n)]
+        z = mp.mpc(z)
+        N, D = self.num, self.den
+        num = _polyval(_polysub(_polymul(deriv(N), D), _polymul(N, deriv(D))), z)
+        den = _polyval(D, z)
+        if abs(den) < mp.mpf(10) ** (-mp.mp.dps + 8):
+            return mp.inf
+        return num / (den * den)
 
     def critical_points(self):
         """Finite critical points: roots of N'D - N D'."""
@@ -130,20 +152,20 @@ class RationalMap:
         return _root_multiplicity(self.den, z)
 
     def local_degree(self, z, tol=mp.mpf(10) ** (-12)):
-        """Local degree at a FINITE point: 2 when f' vanishes there (all
-        our branch points are simple), 1 otherwise; poles via order."""
+        """Local degree at a FINITE point, as a root multiplicity.
+
+        The old derivative heuristic returned at most 2, so it labelled a
+        triple point of z^3 (and every higher ramification) as degree 2.
+        ``tol`` remains in the signature for compatibility; multiplicity uses
+        the coefficient arithmetic of ``_root_multiplicity`` at the current
+        mpmath precision.
+        """
         z = mp.mpc(z)
         fz = self(z)
         if not mp.isfinite(fz):
             return self.pole_degree(z)
-        eps = mp.mpf("1e-15")
-        z1 = z + eps
-        z2 = z + 2 * eps * mp.mpc("0.7", "0.7")
-        d1 = (mp.mpc(self(z1)) - fz) / (z1 - z)
-        d2 = (mp.mpc(self(z2)) - fz) / (z2 - z)
-        if abs(d1) < tol and abs(d2) < tol:
-            return 2
-        return 1
+        coeff = _polysub(self.num, [fz * c for c in self.den])
+        return _root_multiplicity(coeff, z)
 
     def preimage_with_degrees(self, x):
         """[(y, local degree)] over every y in f^{-1}(x), x finite or
@@ -185,41 +207,41 @@ class RationalMap:
         return z
 
     def postcritical_set(self, depth=12, tol=mp.mpf("1e-12")):
-        """Closure of the critical orbits, including infinity; returns
-        (finite points, has_infinity, tolerance used)."""
+        """The postcritical set P = forward closure of the critical orbits.
+
+        Returns (finite points, has_infinity, tolerance used).
+
+        An orbit is followed *through infinity*: if the critical orbit reaches
+        infinity, its image f(infinity) may well be finite, and the orbit must
+        continue there or the set is silently truncated.  The old version broke
+        at the first infinite value, which threw away the rest of every such
+        orbit -- and for a *strictly rational* map, whose critical orbit passes
+        through infinity much more often than for a polynomial, that looks like a
+        spurious "map is not postcritically finite" failure further downstream.
+        Measured on IMG's table entry [3,5], ((z-1)/z)^2: the old code returned
+        {0, infinity}, the correct set being {0, 1, infinity}.
+        """
         pts = []
         has_inf = False
         starts = self.critical_points()
-        orbits = []
+        if self.local_degree_infinity() > 1:
+            starts.append(mp.inf)
         for z0 in starts:
-            # P is the FORWARD orbit: f^n(z0), n >= 1 (a critical point
-            # is in P only if it recurs, e.g. superattracting cycles)
-            orbit = []
-            z = self(mp.mpc(z0))
+            if z0 == mp.inf:
+                z = self.f_infinity()
+            else:
+                z = self(mp.mpc(z0))
             for _ in range(depth):
                 if not mp.isfinite(z):
-                    orbit.append(mp.inf)
-                    break
-                orbit.append(mp.mpc(z))
-                z = self(z)
-            orbits.append(orbit)
-        if self.local_degree_infinity() > 1:
-            orbit = []
-            z = self.f_infinity()
-            for _ in range(depth):
-                if z == mp.inf:
-                    orbit.append(mp.inf)
-                    break
-                orbit.append(mp.mpc(z))
-                z = self(z)
-            orbits.append(orbit)
-        for orb in orbits:
-            for z in orb:
-                if z == mp.inf:
+                    if has_inf:
+                        break
                     has_inf = True
+                    z = self.f_infinity()
                     continue
-                if not any(abs(z - y) < tol for y in pts):
-                    pts.append(z)
+                if any(abs(z - y) < tol for y in pts):
+                    break
+                pts.append(mp.mpc(z))
+                z = self(z)
         return pts, has_inf, tol
 
     def portrait_degrees(self):
@@ -268,3 +290,72 @@ def _polysub(a, b):
     a = [0] * (n - len(a)) + list(a)
     b = [0] * (n - len(b)) + list(b)
     return [x - y for x, y in zip(a, b)]
+
+
+# --------------------------------------------------- Moebius conjugation
+
+def _padd(a, b):
+    """Sum of two coefficient lists, highest power first."""
+    n = max(len(a), len(b))
+    a = [mp.mpc(0)] * (n - len(a)) + [mp.mpc(c) for c in a]
+    b = [mp.mpc(0)] * (n - len(b)) + [mp.mpc(c) for c in b]
+    return [x + y for x, y in zip(a, b)]
+
+
+def _pscale(s, a):
+    return [mp.mpc(s) * mp.mpc(c) for c in a]
+
+
+def _pmul(a, b):
+    out = [mp.mpc(0)] * (len(a) + len(b) - 1)
+    for i, x in enumerate(a):
+        for j, y in enumerate(b):
+            out[i + j] += mp.mpc(x) * mp.mpc(y)
+    return out
+
+
+def mobius_conjugate(f, a, b, c, d):
+    """M o f o M^-1 for M(z) = (a z + b)/(c z + d), as a RationalMap.
+
+    Conjugation by a Möbius map preserves the critical portrait, the orbifold
+    and the type; it moves the geometry.  Applied to a polynomial with M not
+    affine it produces a map that is not a polynomial, whose postcritical set
+    need not contain infinity -- the strictly rational test cases.
+    """
+    if a * d - b * c == 0:
+        raise ValueError("M is degenerate")
+    N, D = [mp.mpc(x) for x in f.num], [mp.mpc(x) for x in f.den]
+    # M^-1(w) = (d w - b)/(a - c w)
+    N1, D1 = [d, -b], [-c, a]
+    # X = f(M^-1(w)) = (N(N1/D1) * D1^deg ... ) -- do it by degree bookkeeping:
+    # with p = deg f, f(x) = (sum N_k x^(p-k))/(sum D_k x^(q-k)), so
+    # f(N1/D1) = sum_k N_k N1^(p-k) D1^k  /  sum_k D_k N1^(q-k) D1^k
+    def compose(poly, n1, d1):
+        p = len(poly) - 1
+        acc = [mp.mpc(0)]
+        for k, ck in enumerate(poly):
+            term = _pscale(ck, _pmul(_ppow(n1, p - k), _ppow(d1, k)))
+            acc = _padd(acc, term)
+        return acc
+    A = compose(N, N1, D1)          # N(X) = A / D1^p
+    B = compose(D, N1, D1)          # D(X) = B / D1^q
+    # f(X) = N(X)/D(X) = D1^(q-p) A/B, so multiply through by the power of D1
+    # that clears it.  Multiplying both by a *common* power instead leaves an
+    # unfactored common factor, and then N(w) - x D(w) has a root independent of
+    # x: every preimage list gets a spurious extra point (measured on the slit
+    # map, whose critical values were read as three preimages each).
+    p, q = len(N) - 1, len(D) - 1
+    if p >= q:
+        B = _pmul(B, _ppow(D1, p - q))
+    else:
+        A = _pmul(A, _ppow(D1, q - p))
+    num = _padd(_pscale(a, A), _pscale(b, B))
+    den = _padd(_pscale(c, A), _pscale(d, B))
+    return RationalMap(num, den)
+
+
+def _ppow(p, k):
+    out = [mp.mpc(1)]
+    for _ in range(k):
+        out = _pmul(out, p)
+    return out
